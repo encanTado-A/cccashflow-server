@@ -1,3 +1,9 @@
+# general
+.env
+.env.local
+.env.*.local
+
+
 # node
 **/node_modules/
 **/.env

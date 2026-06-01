@@ -1,62 +1,112 @@
 // necessary library
-import sqlite3 from 'sqlite3';
-import fs from 'fs';
-import csv from 'csv-parser';
-const results = [];
-// import env from 'dotenv';
-// env.config();
+// node native
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-// const HOSTNAME = '127.0.0.1';
-// // const PORT = 8000;
+// external
+import express from 'express';
+import Database from 'better-sqlite3';
+// import csv from 'csv-parser';
+import env from 'dotenv';
 
-// // read a csv
-// fs.createReadStream('../databases/demo-accounts.csv')
-//     .pi`pe(csv())
-//     .on('data', (data) => results.push(data))
-//     .on('end', () => {
-//       console.log(results);
-//     });`
+// local js
+// import db from './demo-db.js';
 
-// check db exist
-if (! fs.existsSync('F:\\devp\\cccashflow\\databases\\demo.db')) {
-    console.log('File does not exists');
-    process.exit()
+/*
+potential problem
+path format difference on different OSes
+
+*/
+
+// ##################################################
+
+env.config();
+const app = express();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// view engine
+// app.set('view engine', 'ejs');
+
+// a console logger to view success request (TicketX)
+const logger = (req, res, next) => {
+    const method = req.method;
+    const url = req.url;
+    const year = new Date().getFullYear();
+    const month = new Date().getUTCMonth() + 1;
+    const day = new Date().getUTCDate();
+    console.log(`${method} ${url} ${year}-${month}-${day}`);
+    next();
 }
 
-const db = await open({
-    filename: './database.db',
-    driver: sqlite3.Database
+// middleware
+app.use(express.json());
+
+// ##################################################
+
+let db = null;
+let flag_connection = false;
+
+try {
+    const db_file_path = process.env.DEMO_DATABASE_PATH;
+    if ( ! fs.existsSync( db_file_path ) ) {
+        console.log(`File in path ${db_file_path} does not exists`);
+        process.exit(-1);
+    }
+    
+    db = new Database(db_file_path, { verbose: console.log, fileMustExist: true});
+
+    flag_connection = true;
+}
+catch (error) {
+    console.error('Database connection failed:', error.message);
+    flag_connection = false;
+    process.exit(1);
+}
+finally {
+    flag_connection ? console.log(`connection made`) 
+        : console.log(`connection failed`);
+}
+
+if ( db && db.open ) {
+    console.log('db open');
+}
+else {
+    console.log('db is offline');
+}
+
+// ##################################################
+// database query function
+
+
+// ##################################################
+// web access function
+
+app.get('/', logger, async (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// check csv exist
-if ( process.argv.length != 4) {
-    console.log('not enough arguement');
-    process.exit()
-}
+app.get('/add-transaction', logger, async (req, res) => {
+    res.send('Hello World');
+});
 
-console.log(`target table: ${process.argv[2]}, target location: ${process.argv[3]}`);
-// read data
+app.post('/add-transaction', (req, res) => {
+    res.send('Hello World');
+});
 
-db.serialize(() => {
-    const stmt = db.prepare(`INSERT INTO ${process.argv[2]} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+app.get('/db-test/currency', logger, async (req, res) => {
+    // demoConnectSqliteDB
+    const stmt = db.prepare(`SELECT * FROM Currency`);
+    const result = stmt.all();
+        
+    console.log(`${result}`);
+    res.json(result);
+    // res.send(result);
+});
 
-    // read the csv
-    fs.createReadStream(process.argv[3])
-    .pipe(csv())
-    .on('data', (row) => {
-        // row is an object where keys are your CSV headers
-        stmt.run( row.id, 
-                  row.name, 
-                  row.account_type, 
-                  row.description, 
-                  row.opening_balance, 
-                  row.currency, 
-                  row.money_category, 
-                  row.created_at, 
-                  row.updated_at );
-    })
-    .on('end', () => {
-        stmt.finalize();
-        console.log(`CSV file for ${process.argv[3]} has successfully processed`);
-    });
-}); // end db.serialize()
+// web access
+app.listen(process.env.PORT, () => {
+    console.log(`Server is running on http://${process.env.WEB_TEST_IP}:${process.env.PORT}`)
+});
