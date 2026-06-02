@@ -7,3 +7,12 @@
 # node
 **/node_modules/
 **/.env
+
+# server specific
+src/
+
+# resource
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.bmp
