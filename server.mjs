@@ -99,7 +99,7 @@ app.get('/add/transaction', logger, async (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'input-form.html'));
 });
 
-app.post('/add/add-transaction', logger, async (req, res) => {
+app.post('/add/transaction', logger, async (req, res) => {
     // The JSON data is now available cleanly inside req.body
     const data = req.body;
     // console.log(`Received username: ${data[username]}, email: ${data[email]}`);
@@ -126,18 +126,28 @@ app.post('/add/currency', logger, async (req, res) => {
     const target_description = req.body.description;
 
     console.log("Request Body: " + JSON.stringify(req.body, null, 2));
+    console.log(`parsed id: ${target_id}, parsed description: ${target_description}`);
 
     // --- INSERT INTO Currency (id, description) VALUE (@id, @description) ---
-    // const stmt = db.prepare('INSERT INTO Currency (id, description) VALUE (@id, @description)');
-    // const info = db.run();
-    const info = 0;
+    const stmt = db.prepare('INSERT INTO Currency (id, description) VALUES (@id, @description)');
+    let info = null;
+    try {
+        info = stmt.run({id: target_id, description: target_description});
+    }
+    catch (SqliteError) {
+        res.status(422).json({ 
+            status: "failed", 
+            message: `data received but invalid currency!  currency: ${target_id}  description: ${target_description}`, 
+            details: `SQLite Error: ${SqliteError.message}`
+        });
+    }
 
-    // if ( info.changes != 1 ) {
-    //     res.status(200).json({ 
-    //         status: "failed", 
-    //         message: `data received but invalid currency!  currency: ${target_id}  description: ${target_description}` 
-    //     });
-    // }
+    if ( info && info.changes != 1 ) {
+        res.status(422).json({ 
+            status: "failed", 
+            message: `data received but invalid currency!  currency: ${target_id}  description: ${target_description}` 
+        });
+    }
     
     // Send a JSON response back to the frontend
     res.status(200).json({ 
