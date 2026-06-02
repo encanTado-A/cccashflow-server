@@ -13,6 +13,7 @@ import env from 'dotenv';
 // local js
 import demoConnectSqliteDB from './demo-db.cjs';
 import createRouterAdd from './routeradd.mjs';
+import createRouterAPI from './routerAPIV1.mjs';
 import logger from './logger.mjs';
 
 /*
@@ -71,6 +72,11 @@ app.get('/', logger, async (req, res) => {
     // res.render('index.html', { username: 'Andrew' }); 
 });
 
+app.get('/test', logger, async (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'test.html'));
+    // res.render('index.html', { username: 'Andrew' }); 
+});
+
 // --------------------------------------------------
 // /add pages
 
@@ -81,78 +87,85 @@ app.use('/add', routeradd);
 // --------------------------------------------------
 // api pages
 
-app.get('/api', logger, async (req, res) => {
-    res.json({
-        status: "demo"
-    });
-    // res.send(result);
-});
+const routerapiv1 = createRouterAPI(db);  // wire db into router
+app.use('/api', routerapiv1);
 
-app.get('/api/demo/currency', logger, async (req, res) => {
-    // demoConnectSqliteDB
-    var stmt = db.prepare(`SELECT * FROM Currency`);
-    var result = stmt.all();
-        
-    console.log(`${result}`);
-    res.json(result);
-    // res.send(result);
-});
+// app.get('/api', logger, async (req, res) => {
+//     res.json({
+//         status: "demo"
+//     });
+//     // res.send(result);
+// });
 
-app.get('/api/demo/accounttype', logger, async (req, res) => {
-    // demoConnectSqliteDB
-    var stmt = db.prepare(`SELECT * FROM AccountType`);
-    var result = stmt.all();
+// app.get('/api/demo/currency', logger, async (req, res) => {
+//     // demoConnectSqliteDB
+//     var stmt = db.prepare(`SELECT * FROM Currency`);
+//     var result = stmt.all();
         
-    console.log(`${result}`);
-    res.json(result);
-    // res.send(result);
-});
+//     console.log(`${result}`);
+//     res.json(result);
+//     // res.send(result);
+// });
 
-app.get('/api/demo/accounts', logger, async (req, res) => {
-    // demoConnectSqliteDB
-    var stmt = db.prepare(`SELECT * FROM Accounts`);
-    var result = stmt.all();
+// app.get('/api/demo/accounttype', logger, async (req, res) => {
+//     // demoConnectSqliteDB
+//     var stmt = db.prepare(`SELECT * FROM AccountType`);
+//     var result = stmt.all();
         
-    console.log(`${result}`);
-    res.json(result);
-    // res.send(result);
-});
+//     console.log(`${result}`);
+//     res.json(result);
+//     // res.send(result);
+// });
 
-app.get('/api/demo/transactionsledger', logger, async (req, res) => {
-    // demoConnectSqliteDB
-    var stmt = db.prepare(`SELECT * FROM TransactionsLedger`);
-    var result = stmt.all();
+// app.get('/api/demo/accounts', logger, async (req, res) => {
+//     // demoConnectSqliteDB
+//     var stmt = db.prepare(`SELECT * FROM Accounts`);
+//     var result = stmt.all();
         
-    console.log(`${result}`);
-    res.json(result);
-    // res.send(result);
-});
+//     console.log(`${result}`);
+//     res.json(result);
+//     // res.send(result);
+// });
 
-app.get('/api/demo/transactionsjournal', logger, async (req, res) => {
-    // demoConnectSqliteDB
-    var stmt = db.prepare(`SELECT * FROM TransactionsJournal`);
-    var result = stmt.all();
+// app.get('/api/demo/transactionsledger', logger, async (req, res) => {
+//     // demoConnectSqliteDB
+//     var stmt = db.prepare(`SELECT * FROM TransactionsLedger`);
+//     var result = stmt.all();
         
-    console.log(`${result}`);
-    res.json(result);
-    // res.send(result);
-});
+//     console.log(`${result}`);
+//     res.json(result);
+//     // res.send(result);
+// });
 
-app.get('/api/demo/AccountBalance', logger, async (req, res) => {
-    // demoConnectSqliteDB
-    var stmt = db.prepare(`SELECT * FROM AccountBalance`);
-    var result = stmt.all();
+// app.get('/api/demo/transactionsjournal', logger, async (req, res) => {
+//     // demoConnectSqliteDB
+//     var stmt = db.prepare(`SELECT * FROM TransactionsJournal`);
+//     var result = stmt.all();
         
-    console.log(`${result}`);
-    res.json(result);
-    // res.send(result);
-});
+//     console.log(`${result}`);
+//     res.json(result);
+//     // res.send(result);
+// });
+
+// app.get('/api/demo/AccountBalance', logger, async (req, res) => {
+//     // demoConnectSqliteDB
+//     var stmt = db.prepare(`SELECT * FROM AccountBalance`);
+//     var result = stmt.all();
+        
+//     console.log(`${result}`);
+//     res.json(result);
+//     // res.send(result);
+// });
 
 // --------------------------------------------------
 
 // web access
-app.listen(process.env.PORT, () => {
-    console.log(`Server is running on http://${process.env.WEB_TEST_IP}:${process.env.PORT}`)
+// app.listen(process.env.PORT, () => {
+//     console.log(`Server is running on http://${process.env.DEMO_WEB_IP}:${process.env.DEMO_PORT}`)
+// });
+
+app.listen(process.env.DEMO_PORT, () => {
+    console.log(`Server is running on http://127.0.0.1:${process.env.DEMO_PORT}`)
 });
 
 // ##################################################
