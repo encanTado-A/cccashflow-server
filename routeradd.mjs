@@ -6,8 +6,6 @@ import { fileURLToPath } from 'node:url';
 // local js
 import logger from './logger.mjs';
 
-// const router = express.Router();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -16,14 +14,13 @@ export default function createRouter(db) {
 
     router.get('/', logger, async (req, res) => {
         res.send("home");
-    });
+    }); // end get(/)
     
     router.get('/transaction', logger, async (req, res) => {
         res.render('transaction', { title: 'Add Transaction' });
-    });
+    }); // end get(/transaction)
     
     router.post('/transaction', logger, async (req, res) => {
-        // The JSON data is now available cleanly inside req.body
         const data = req.body;
         console.log("info: Request Body: " + JSON.stringify(req.body, null, 2));
     
@@ -58,42 +55,30 @@ export default function createRouter(db) {
             });
         }
         
-        // Send a JSON response back to the frontend
         res.status(200).json({ 
             status: "success", 
             message: `data well received!  new currency: ${target_id}  description: ${target_description}` 
         });
-        
-        // Send a JSON response back to the frontend
-        res.status(200).json({ 
-            status: "success", 
-            message: `data well received!` 
-        });
-    });
+    }); // end post(/transaction)
     
     router.get('/demo/transaction', logger, async (req, res) => {
         res.sendFile(path.join(__dirname, 'public', 'input-form.html'));
-    });
+    }); // end get(/demo/transaction)
     
     router.post('/demo/transaction', logger, async (req, res) => {
-        // The JSON data is now available cleanly inside req.body
         const data = req.body;
-        // console.log(`Received username: ${data[username]}, email: ${data[email]}`);
         console.log(`Received data: \n${data}`);
         console.log("Request Body: " + JSON.stringify(req.body, null, 2));
-        // --- DO YOUR ACTION HERE ---
-        // Example: INSERT INTO Users (username, email) VALUES (?, ?)
         
-        // Send a JSON response back to the frontend
         res.status(200).json({ 
             status: "success", 
             message: `data well received!` 
         });
-    });
+    }); // end post(/demo/transaction)
     
     router.get('/currency', logger, async (req, res) => {
         res.sendFile(path.join(__dirname, 'public', 'new-currency.html'));
-    });
+    }); // end get(/currency)
     
     router.post('/currency', logger, async (req, res) => {
         const data = req.body;
@@ -129,8 +114,7 @@ export default function createRouter(db) {
             status: "success", 
             message: `data well received!  new currency: ${target_id}  description: ${target_description}` 
         });
-    });
+    }); // end post(/currency)
     
-    // export default router;
     return router;
-};
+}; // end createRouter()

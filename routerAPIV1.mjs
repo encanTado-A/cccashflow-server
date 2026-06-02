@@ -16,62 +16,55 @@ export default function createRouter(db) {
         res.json({
             status: "demo"
         });
-        // res.send(result);
-    });
+    }); // end get(v1/)
 
     router.get('/v1/demo/currency', logger, async (req, res) => {
-        // demoConnectSqliteDB
         var stmt = db.prepare(`SELECT * FROM Currency`);
         var result = stmt.all();
             
         console.log(`${result}`);
         res.json(result);
-    });
+    }); // end get(v1/demo/currency)
 
     router.get('/v1/demo/accounttype', logger, async (req, res) => {
-        // demoConnectSqliteDB
         var stmt = db.prepare(`SELECT * FROM AccountType`);
         var result = stmt.all();
             
         console.log(`${result}`);
         res.json(result);
-    });
+    }); // end get(v1/demo/accounttype)
 
     router.get('/v1/demo/accounts', logger, async (req, res) => {
-        // demoConnectSqliteDB
         var stmt = db.prepare(`SELECT * FROM Accounts`);
         var result = stmt.all();
             
         console.log(`${result}`);
         res.json(result);
-    });
+    }); // end get(v1/demo/accounts)
 
     router.get('/v1/demo/transactionsledger', logger, async (req, res) => {
-        // demoConnectSqliteDB
         var stmt = db.prepare(`SELECT * FROM TransactionsLedger`);
         var result = stmt.all();
             
         console.log(`${result}`);
         res.json(result);
-    });
+    }); // end get(v1/demo/transactionsledger)
 
     router.get('/v1/demo/transactionsjournal', logger, async (req, res) => {
-        // demoConnectSqliteDB
         var stmt = db.prepare(`SELECT * FROM TransactionsJournal`);
         var result = stmt.all();
             
         console.log(`${result}`);
         res.json(result);
-    });
+    }); // end get(v1/demo/transactionsjournal)
 
     router.get('/v1/demo/AccountBalance', logger, async (req, res) => {
-        // demoConnectSqliteDB
         var stmt = db.prepare(`SELECT * FROM AccountBalance`);
         var result = stmt.all();
             
         console.log(`${result}`);
         res.json(result);
-    });
+    }); // end get(v1/demo/AccountBalance)
 
     return router
-}
+}; // end createRouter()

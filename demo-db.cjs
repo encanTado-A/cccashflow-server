@@ -1,11 +1,11 @@
 // Cjs
 const Database = require('better-sqlite3');
 const fs = require('fs');
+const path = require('path');
 // const env = require('dotenv');
 
 // env.config();
 
-// check db exist
 const post_path = 'F:\\devp\\cccashflow\\databases\\';
 const demo_filename = [
     `demo.db`,
@@ -25,11 +25,15 @@ const demo_table_name = [
     `TransactionLedger`,
 ];
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 let db = null;
+
 const demoConnectSqliteDB = () => {
     console.log("status: call from demo-db.js");
     try {
-        // const db_file_path = post_path+demo_filename[0];
+        // const db_file_path = path.join(__dirname, "database", demo_filename[0]);
         const db_file_path = process.env.DEMO_DATABASE_PATH;
         if ( ! fs.existsSync( db_file_path ) ) {
             console.log('status: database file does not exists');
@@ -37,11 +41,7 @@ const demoConnectSqliteDB = () => {
         }
         
         db = new Database(db_file_path, { verbose: console.log, fileMustExist: true});
-        // if ( db && db.open ) {
-        //     console.log('status: db open');
-        // }
-        // const Database = require('better-sqlite3')(db_file_path, { verbose: console.log });
-        
+                
         // for (let i = 0; i < demo_filename.length; i++) {
         //     console.log(`${i}th filename:\t\t${ post_path+demo_filename[i] }`)
         // };
@@ -54,7 +54,6 @@ const demoConnectSqliteDB = () => {
         console.log('status: finish demoConnectSqliteDB');
     }
     return db;
-};
+}; // end demoConnectSqliteDB()
 
-// export default demoConnectSqliteDB;
 module.exports = demoConnectSqliteDB;

@@ -38,8 +38,6 @@ app.set('views', path.join(__dirname, 'src', 'views'));
 app.use(express.json()); // auto parse JSON  and places result object onto res.body
 app.use(express.urlencoded({ extended: true })) // parse data submitted via HTML <form>
 
-
-
 // ##################################################
 
 let db = null;
@@ -80,7 +78,6 @@ app.get('/test', logger, async (req, res) => {
 // --------------------------------------------------
 // /add pages
 
-// app.use( '/add', Router_add );
 const routeradd = createRouterAdd(db);  // wire db into router
 app.use('/add', routeradd);
 
@@ -89,73 +86,6 @@ app.use('/add', routeradd);
 
 const routerapiv1 = createRouterAPI(db);  // wire db into router
 app.use('/api', routerapiv1);
-
-// app.get('/api', logger, async (req, res) => {
-//     res.json({
-//         status: "demo"
-//     });
-//     // res.send(result);
-// });
-
-// app.get('/api/demo/currency', logger, async (req, res) => {
-//     // demoConnectSqliteDB
-//     var stmt = db.prepare(`SELECT * FROM Currency`);
-//     var result = stmt.all();
-        
-//     console.log(`${result}`);
-//     res.json(result);
-//     // res.send(result);
-// });
-
-// app.get('/api/demo/accounttype', logger, async (req, res) => {
-//     // demoConnectSqliteDB
-//     var stmt = db.prepare(`SELECT * FROM AccountType`);
-//     var result = stmt.all();
-        
-//     console.log(`${result}`);
-//     res.json(result);
-//     // res.send(result);
-// });
-
-// app.get('/api/demo/accounts', logger, async (req, res) => {
-//     // demoConnectSqliteDB
-//     var stmt = db.prepare(`SELECT * FROM Accounts`);
-//     var result = stmt.all();
-        
-//     console.log(`${result}`);
-//     res.json(result);
-//     // res.send(result);
-// });
-
-// app.get('/api/demo/transactionsledger', logger, async (req, res) => {
-//     // demoConnectSqliteDB
-//     var stmt = db.prepare(`SELECT * FROM TransactionsLedger`);
-//     var result = stmt.all();
-        
-//     console.log(`${result}`);
-//     res.json(result);
-//     // res.send(result);
-// });
-
-// app.get('/api/demo/transactionsjournal', logger, async (req, res) => {
-//     // demoConnectSqliteDB
-//     var stmt = db.prepare(`SELECT * FROM TransactionsJournal`);
-//     var result = stmt.all();
-        
-//     console.log(`${result}`);
-//     res.json(result);
-//     // res.send(result);
-// });
-
-// app.get('/api/demo/AccountBalance', logger, async (req, res) => {
-//     // demoConnectSqliteDB
-//     var stmt = db.prepare(`SELECT * FROM AccountBalance`);
-//     var result = stmt.all();
-        
-//     console.log(`${result}`);
-//     res.json(result);
-//     // res.send(result);
-// });
 
 // --------------------------------------------------
 
@@ -174,10 +104,6 @@ process.on('SIGTERM', () => {
   console.log('SIGTERM signal received. Shutting down gracefully.');
   db.close();
   process.exit(0);
-//   server.close(() => {
-//     console.log('HTTP server closed.');
-//     // Close database connections or other resources here
-//   });
 });
 
 process.on('SIGINT', () => {
@@ -186,6 +112,4 @@ process.on('SIGINT', () => {
   db.close();
   console.log('database server closed.');
   process.exit(0);
-//   server.close(() => {
-//   });
 });
