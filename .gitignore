@@ -10,6 +10,7 @@
 
 # server specific
 src/
+public/
 
 # resource
 **/*.png
