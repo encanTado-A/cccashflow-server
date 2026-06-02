@@ -1,0 +1,19 @@
+# general
+.env
+.env.local
+.env.*.local
+
+
+# node
+**/node_modules/
+**/.env
+
+# server specific
+src/
+public/
+
+# resource
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.bmp
