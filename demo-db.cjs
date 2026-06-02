@@ -27,18 +27,18 @@ const demo_table_name = [
 
 let db = null;
 const demoConnectSqliteDB = () => {
-    console.log("call from demo-db.js");
+    console.log("status: call from demo-db.js");
     try {
         // const db_file_path = post_path+demo_filename[0];
         const db_file_path = process.env.DEMO_DATABASE_PATH;
         if ( ! fs.existsSync( db_file_path ) ) {
-            console.log('File does not exists');
+            console.log('status: database file does not exists');
             process.exit(-1);
         }
         
         db = new Database(db_file_path, { verbose: console.log, fileMustExist: true});
         // if ( db && db.open ) {
-        //     console.log('db open');
+        //     console.log('status: db open');
         // }
         // const Database = require('better-sqlite3')(db_file_path, { verbose: console.log });
         
@@ -47,11 +47,11 @@ const demoConnectSqliteDB = () => {
         // };
     }
     catch (error) {
-        console.error('Database connection failed:', error.message);
+        console.error('status: Database connection failed:', error.message);
         process.exit(-1);
     }
     finally {
-        console.log(`finish demoConnectSqliteDB`);
+        console.log('status: finish demoConnectSqliteDB');
     }
     return db;
 };
