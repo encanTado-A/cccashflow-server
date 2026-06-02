@@ -11,7 +11,9 @@ import Database from 'better-sqlite3';
 import env from 'dotenv';
 
 // local js
-// import demo_db from './demo-db.js';
+import demoConnectSqliteDB from './demo-db.cjs';
+import Router_add from './routeradd.mjs';
+import logger from './logger.mjs';
 
 /*
 potential problem
@@ -31,56 +33,28 @@ const __dirname = path.dirname(__filename);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src', 'views')); 
 
-// a console logger to view success request (TicketX)
-const logger = (req, res, next) => {
-    const method = req.method;
-    const url = req.url;
-    // const year = new Date().getFullYear();
-    // const month = new Date().getUTCMonth() + 1;
-    // const day = new Date().getUTCDate();
-    // console.log(`${method} ${url} ${year}-${month}-${day}`);
-    const date = new Date();
-    console.log(`${date} ${method} ${url}`);
-    next();
-}
-
 // middleware
 app.use(express.json()); // auto parse JSON  and places result object onto res.body
 app.use(express.urlencoded({ extended: true })) // parse data submitted via HTML <form>
+app.use('/add', Router_add);
 
 // ##################################################
 
 let db = null;
-// db = demo_db.demoConnectSqliteDB;
-let flag_connection = false;
-
 try {
-    const db_file_path = process.env.DEMO_DATABASE_PATH;
-    if ( ! fs.existsSync( db_file_path ) ) {
-        console.log(`File in path ${db_file_path} does not exists`);
-        process.exit(-1);
-    }
-    
-    db = new Database(db_file_path, { verbose: console.log, fileMustExist: true});
+    console.log('DEMO_DATABASE_PATH=', process.env.DEMO_DATABASE_PATH);
 
-    flag_connection = true;
+    db = demoConnectSqliteDB(); // <-- call the function to get Database instance
+    if (db && db.open) {
+        console.log('db open');
+        db.pragma('journal_mode = WAL'); // suggested from official for performance reasons
+    } else {
+        console.log('db is offline');
+    }
 }
 catch (error) {
     console.error('Database connection failed:', error.message);
-    flag_connection = false;
-    process.exit(1);
-}
-finally {
-    flag_connection ? console.log(`connection made`) 
-        : console.log(`connection failed`);
-}
-
-if ( db && db.open ) {
-    console.log('db open');
-    db.pragma('journal_mode = WAL'); // suggested from official for performance reasons
-}
-else {
-    console.log('db is offline');
+    process.exit(-1);
 }
 
 // ##################################################
@@ -95,66 +69,113 @@ app.get('/', logger, async (req, res) => {
     // res.render('index.html', { username: 'Andrew' }); 
 });
 
-app.get('/add/transaction', logger, async (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'input-form.html'));
-});
 
-app.post('/add/transaction', logger, async (req, res) => {
-    // The JSON data is now available cleanly inside req.body
-    const data = req.body;
-    // console.log(`Received username: ${data[username]}, email: ${data[email]}`);
-    console.log(`Received data: \n${data}`);
-    console.log("Request Body: " + JSON.stringify(req.body, null, 2));
-    // --- DO YOUR ACTION HERE ---
-    // Example: INSERT INTO Users (username, email) VALUES (?, ?)
+// app.get('/add/transaction', logger, async (req, res) => {
+//     res.render('transaction', { title: 'Add Transaction' });
+// });
+
+// app.post('/add/transaction', logger, async (req, res) => {
+//     // The JSON data is now available cleanly inside req.body
+//     const data = req.body;
+//     console.log("Request Body: " + JSON.stringify(req.body, null, 2));
+
+//     const target_description = req.body.description;
+//     const target_created_at = req.body.created_at;
+//     const target_metadata = req.body.metadata;
+//     const target_is_deleted = req.body.is_deleted;
+
+//     // --- INSERT INTO transactionJournal (id, description) VALUE (@id, @description) ---
+//     const stmt = db.prepare('INSERT INTO transactionJournal (description, created_at, metadata, is_deleted) VALUES (@description, @created_at, @metadata, @is_deleted)');
+//     let info = null;
+//     try {
+//         info = stmt.run({
+//             description: target_description, 
+//             created_at: target_created_at, 
+//             metadata: target_metadata, 
+//             is_deleted: target_is_deleted
+//         });
+//     }
+//     catch (SqliteError) {
+//         res.status(422).json({ 
+//             status: "failed", 
+//             message: `data received but invalid currency!  description: ${target_description}`, 
+//             details: `SQLite Error: ${SqliteError.message}`
+//         });
+//     }
+
+//     if ( info && info.changes != 1 ) {
+//         res.status(422).json({ 
+//             status: "failed", 
+//             message: `data received but invalid currency!  description: ${target_description}` 
+//         });
+//     }
     
-    // Send a JSON response back to the frontend
-    res.status(200).json({ 
-        status: "success", 
-        message: `data well received!` 
-    });
-});
+//     // Send a JSON response back to the frontend
+//     res.status(200).json({ 
+//         status: "success", 
+//         message: `data well received!  new currency: ${target_id}  description: ${target_description}` 
+//     });
+// }); // end app.post('/add/transaction')
 
-app.get('/add/currency', logger, async (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'new-currency.html'));
-});
+// app.get('/add/demo/transaction', logger, async (req, res) => {
+//     res.sendFile(path.join(__dirname, 'public', 'input-form.html'));
+// });
 
-app.post('/add/currency', logger, async (req, res) => {
-    // The JSON data is now available cleanly inside req.body
-    const data = req.body;
-    const target_id = req.body.id;
-    const target_description = req.body.description;
-
-    console.log("Request Body: " + JSON.stringify(req.body, null, 2));
-    console.log(`parsed id: ${target_id}, parsed description: ${target_description}`);
-
-    // --- INSERT INTO Currency (id, description) VALUE (@id, @description) ---
-    const stmt = db.prepare('INSERT INTO Currency (id, description) VALUES (@id, @description)');
-    let info = null;
-    try {
-        info = stmt.run({id: target_id, description: target_description});
-    }
-    catch (SqliteError) {
-        res.status(422).json({ 
-            status: "failed", 
-            message: `data received but invalid currency!  currency: ${target_id}  description: ${target_description}`, 
-            details: `SQLite Error: ${SqliteError.message}`
-        });
-    }
-
-    if ( info && info.changes != 1 ) {
-        res.status(422).json({ 
-            status: "failed", 
-            message: `data received but invalid currency!  currency: ${target_id}  description: ${target_description}` 
-        });
-    }
+// app.post('/add/demo/transaction', logger, async (req, res) => {
+//     // The JSON data is now available cleanly inside req.body
+//     const data = req.body;
+//     // console.log(`Received username: ${data[username]}, email: ${data[email]}`);
+//     console.log(`Received data: \n${data}`);
+//     console.log("Request Body: " + JSON.stringify(req.body, null, 2));
+//     // --- DO YOUR ACTION HERE ---
+//     // Example: INSERT INTO Users (username, email) VALUES (?, ?)
     
-    // Send a JSON response back to the frontend
-    res.status(200).json({ 
-        status: "success", 
-        message: `data well received!  new currency: ${target_id}  description: ${target_description}` 
-    });
-});
+//     // Send a JSON response back to the frontend
+//     res.status(200).json({ 
+//         status: "success", 
+//         message: `data well received!` 
+//     });
+// });
+
+// app.get('/add/currency', logger, async (req, res) => {
+//     res.sendFile(path.join(__dirname, 'public', 'new-currency.html'));
+// });
+
+// app.post('/add/currency', logger, async (req, res) => {
+//     const data = req.body;
+//     const target_id = req.body.id;
+//     const target_description = req.body.description;
+
+//     console.log("Request Body: " + JSON.stringify(req.body, null, 2));
+//     console.log(`parsed id: ${target_id}, parsed description: ${target_description}`);
+
+//     // --- INSERT INTO Currency (id, description) VALUE (@id, @description) ---
+//     const stmt = db.prepare('INSERT INTO Currency (id, description) VALUES (@id, @description)');
+//     let info = null;
+//     try {
+//         info = stmt.run({id: target_id, description: target_description});
+//     }
+//     catch (SqliteError) {
+//         res.status(422).json({ 
+//             status: "failed", 
+//             message: `data received but invalid currency!  currency: ${target_id}  description: ${target_description}`, 
+//             details: `SQLite Error: ${SqliteError.message}`
+//         });
+//     }
+
+//     if ( info && info.changes != 1 ) {
+//         res.status(422).json({ 
+//             status: "failed", 
+//             message: `data received but invalid currency!  currency: ${target_id}  description: ${target_description}` 
+//         });
+//     }
+    
+//     // Send a JSON response back to the frontend
+//     res.status(200).json({ 
+//         status: "success", 
+//         message: `data well received!  new currency: ${target_id}  description: ${target_description}` 
+//     });
+// });
 
 app.get('/api', logger, async (req, res) => {
     res.json({
