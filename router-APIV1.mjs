@@ -4,6 +4,27 @@ import express from 'express';
 // local js
 import logger from './logger.mjs';
 
+// Whitelist of allowed tables for security
+const ALLOWED_TABLES = [
+    'AccountType',
+    'Currency',
+    'MoneyCategory',
+    'Accounts',
+    'TransactionsLedger',
+    'TransactionsJournal',
+    'AccountBalance'
+];
+
+// Helper: Get column names from table pragma
+function getColumnsFromPragma(db, tableName) {
+    try {
+        const pragma = db.prepare(`PRAGMA table_info(${tableName})`).all();
+        return pragma.map(p => p.name);
+    } catch (err) {
+        return [];
+    }
+}
+
 export default function createRouter(db, __dirname) {
     const router = express.Router();
 
@@ -125,6 +146,39 @@ export default function createRouter(db, __dirname) {
     }); // end get(v1/accountbalance)
 
     // ##################################################
+    // API Endpoints for Dynamic Query Display
+
+    // GET /tables - Return list of allowed tables
+    router.get('/v1/tables', logger, (req, res) => {
+        res.json({ tables: ALLOWED_TABLES });
+    }); // end get(/v1/tables)
+
+    // GET /query - Query data from selected table
+    router.get('/v1/query', logger, (req, res) => {
+        const table = req.query.table;
+
+        // Validate table name against whitelist
+        if (!table || !ALLOWED_TABLES.includes(table)) {
+            return res.status(400).json({ error: 'Invalid or missing table name' });
+        }
+
+        try {
+            const stmt = db.prepare(`SELECT * FROM ${table}`);
+            const rows = stmt.all();
+            
+            // Get column names from result or pragma
+            let columns = [];
+            if (rows.length > 0) {
+                columns = Object.keys(rows[0]);
+            } else {
+                columns = getColumnsFromPragma(db, table);
+            }
+
+            res.json({ columns, rows });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }); // end get(/v1/query)
 
     return router
 }; // end createRouter()

@@ -32,8 +32,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // view engine
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'src', 'views')); 
+app.set( 'view engine', 'ejs' );
+app.set( 'views', path.join(__dirname, 'src', 'views') );
+app.use( express.static(path.join(__dirname, 'public'), { index: false }) );
 
 // middleware
 app.use(express.json()); // auto parse JSON  and places result object onto res.body
