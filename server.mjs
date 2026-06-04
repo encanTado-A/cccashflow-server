@@ -11,10 +11,11 @@ import Database from 'better-sqlite3';
 import env from 'dotenv';
 
 // local js
-import demoConnectSqliteDB from './demo-db.cjs';
-import createRouterAdd from './routeradd.mjs';
-import createRouterAPI from './routerAPIV1.mjs';
 import logger from './logger.mjs';
+import demoConnectSqliteDB from './demo-db.cjs';
+import createRouterAdd from './router-add.mjs';
+import createRouterAPI from './router-APIV1.mjs';
+import createRouterView from './router-view.mjs';
 
 /*
 potential problem
@@ -57,7 +58,6 @@ catch (error) {
     process.exit(-1);
 }
 
-
 // ##################################################
 // database query function
 
@@ -66,8 +66,8 @@ catch (error) {
 // web access function
 
 app.get('/', logger, async (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-    // res.render('index.html', { username: 'Andrew' }); 
+    // res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.render('index', { title: 'Home', username: 'Andrew' }); 
 });
 
 app.get('/test', logger, async (req, res) => {
@@ -78,24 +78,31 @@ app.get('/test', logger, async (req, res) => {
 // --------------------------------------------------
 // /add pages
 
-const routeradd = createRouterAdd(db);  // wire db into router
-app.use('/add', routeradd);
+const router_add = createRouterAdd(db, __dirname);  // wire db into router
+app.use('/add', router_add);
+
+// --------------------------------------------------
+// view pages
+
+const router_view = createRouterView(db, __dirname);  // wire db into router
+app.use('/view', router_view);
 
 // --------------------------------------------------
 // api pages
 
-const routerapiv1 = createRouterAPI(db);  // wire db into router
-app.use('/api', routerapiv1);
+const router_apiv1 = createRouterAPI(db, __dirname);  // wire db into router
+app.use('/api', router_apiv1);
 
 // --------------------------------------------------
 
+
 // web access
-// app.listen(process.env.PORT, () => {
-//     console.log(`Server is running on http://${process.env.DEMO_WEB_IP}:${process.env.DEMO_PORT}`)
+// app.listen(process.env.WEB_PORT, () => {
+//     console.log(`Server is running on http://${process.env.WEB_IP}:${process.env.WEB_PORT}`)
 // });
 
 app.listen(process.env.DEMO_PORT, () => {
-    console.log(`Server is running on http://127.0.0.1:${process.env.DEMO_PORT}`)
+    console.log(`Server is running on http://${process.env.DEMO_WEB_IP}:${process.env.DEMO_PORT}`)
 });
 
 // ##################################################

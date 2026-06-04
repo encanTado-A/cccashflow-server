@@ -1,7 +1,7 @@
 // Cjs
 const Database = require('better-sqlite3');
 const fs = require('fs');
-const path = require('path');
+// const path = require('path');
 // const env = require('dotenv');
 
 // env.config();
@@ -25,8 +25,8 @@ const demo_table_name = [
     `TransactionLedger`,
 ];
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
 
 let db = null;
 
