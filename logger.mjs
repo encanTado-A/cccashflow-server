@@ -1,7 +1,8 @@
-// a console logger to view success request (TicketX)
+// a console logger to view success request
 const logger = (req, res, next) => {
     const method = req.method;
-    const url = req.url;
+    // const url = req.url;
+    const fullURL = req.originalUrl; // suggestion from gemini
     
     // method 1
     // const year = new Date().getFullYear();
@@ -12,7 +13,9 @@ const logger = (req, res, next) => {
     
     // method 2
     const date = new Date();
-    console.log(`${date} ${method} ${url}`);
+    
+    // console.log(`${date} ${method} ${url}`);
+    console.log(`${date.toISOString()} ${method} ${fullURL}`);
     next();
 }
 
