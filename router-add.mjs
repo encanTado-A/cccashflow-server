@@ -1,15 +1,10 @@
 // officical
 import express from 'express';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 // local js
 import logger from './logger.mjs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-export default function createRouter(db) {
+export default function createRouter(db, __dirname) {
     const router = express.Router();
 
     router.get('/', logger, async (req, res) => {
