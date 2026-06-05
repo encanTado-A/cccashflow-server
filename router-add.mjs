@@ -171,6 +171,22 @@ export default function createRouter(db, __dirname) {
                 exchange_rate: target_exchange_rate
             });
 
+            // MYSQL / MARIADB
+            // const check_stmt_result = db.prepare(`SELECT sum(IF is_credit, amount, 0) AS total_debit, 
+            //                             sum(IF NOT(is_credit), amount, 0) AS total_credit 
+            //                             FROM transactionsJournal`).run();
+            // sqlite
+            const check_stmt_result = db.prepare(`SELECT sum(CASE WHEN is_credit THEN amount ELSE 0 END) AS total_debit, 
+                                        sum(CASE WHEN NOT is_credit THEN amount ELSE 0 END) AS total_credit 
+                                        FROM transactionsLedger`).get();
+            if ( check_stmt_result.total_debit - check_stmt_result.total_credit != 0 ) {
+                // return res.status(500).json({ 
+                //     status: "failed", 
+                //     message: `transaction record not accept`, 
+                //     detail: `internal error` 
+                // });
+                throw new Error(`Error: Failed to insert transaction Ledger record with these 2 account description: from ${ledgerData.account_id}  to ${ledgerData.account_id} with item description: ${ledgerData.description}. Check Sum.`);
+            }
         }
         catch (SqliteError) {
             return res.status(422).json({ 
@@ -181,21 +197,6 @@ export default function createRouter(db, __dirname) {
             });
         }
 
-        // MYSQL / MARIADB
-        // const check_stmt_result = db.prepare(`SELECT sum(IF is_credit, amount, 0) AS total_debit, 
-        //                             sum(IF NOT(is_credit), amount, 0) AS total_credit 
-        //                             FROM transactionsJournal`).run();
-        // sqlite
-        const check_stmt_result = db.prepare(`SELECT sum(CASE WHEN is_credit THEN amount ELSE 0 END) AS total_debit, 
-                                    sum(CASE WHEN NOT is_credit THEN amount ELSE 0 END) AS total_credit 
-                                    FROM transactionsJournal`).get();
-        if ( check_stmt_result.total_debit - check_stmt_result.total_credit != 0 ) {
-            return res.status(500).json({ 
-                status: "failed", 
-                message: `transaction record not accept`, 
-                detail: `internal error` 
-            });
-        }
 
         // if ( ! info || info.changes != 1 ) {
         //     return res.status(422).json({ 
