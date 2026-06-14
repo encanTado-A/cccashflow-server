@@ -13,6 +13,7 @@ import env from 'dotenv';
 // local js
 import logger from './logger.mjs';
 import demoConnectSqliteDB from './demo-db.cjs';
+import testConnectSqliteDB from './test-db-connect.cjs';
 import createRouterAdd from './router-add.mjs';
 import createRouterAPI from './router-APIV1.mjs';
 import createRouterView from './router-view.mjs';
@@ -41,12 +42,33 @@ app.use(express.json()); // auto parse JSON  and places result object onto res.b
 app.use(express.urlencoded({ extended: true })) // parse data submitted via HTML <form>
 
 // ##################################################
+const args = process.argv || 0;
+
+const isHelp = args.includes('--help') || args.includes('-h');
+if (isHelp) {
+    console.log( `--demo / -d \t\t : program will start in demo setting, including demo database` )
+    console.log( `--test / -t \t\t : program will start in test setting, including testing database` )
+
+    process.exit(0);
+}
+const flagDemo = args.includes('--demo') || args.includes('-d');
+const flagTest = args.includes('--test') || args.includes('-t');
+const flagproduction = ! (flagDemo || flagTest);
+
+// ##################################################
 
 let db = null;
 try {
-    console.log('DEMO_DATABASE_PATH=', process.env.DEMO_DATABASE_PATH);
+    // console.log('DEMO_DATABASE_PATH=', process.env.DEMO_DATABASE_PATH);
     
-    db = demoConnectSqliteDB(); // <-- call the function to get Database instance
+    if (flagDemo) {
+        db = demoConnectSqliteDB(); // <-- call the function to get Database instance
+    }
+    else if (flagTest) {
+        db = testConnectSqliteDB(); // <-- call the function to get Database instance
+    }
+    // db = connectSqliteDB(); // <-- call the function to get Database instance
+
     if (db && db.open) {
         console.log('status: db open');
         db.pragma('journal_mode = WAL'); // suggested from official for performance reasons
@@ -58,10 +80,6 @@ catch (error) {
     console.error('status: Database connection failed:', error.message);
     process.exit(-1);
 }
-
-// ##################################################
-// database query function
-
 
 // ##################################################
 // web access function
@@ -98,13 +116,17 @@ app.use('/api', router_apiv1);
 
 
 // web access
-// app.listen(process.env.WEB_PORT, () => {
-//     console.log(`Server is running on http://${process.env.WEB_IP}:${process.env.WEB_PORT}`)
-// });
+if (flagproduction) {
+    app.listen(8000, () => {
+        console.log(`Server is running on http://localhost:8000`)
+    });
 
-app.listen(process.env.DEMO_PORT, () => {
-    console.log(`Server is running on http://${process.env.DEMO_WEB_IP}:${process.env.DEMO_PORT}`)
-});
+}
+else if (flagDemo || flagTest) {
+    app.listen(process.env.DEMO_PORT, () => {
+        console.log(`Server is running on http://${process.env.DEMO_WEB_IP}:${process.env.DEMO_PORT}`)
+    });
+}
 
 // ##################################################
 

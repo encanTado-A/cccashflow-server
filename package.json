@@ -5,6 +5,8 @@
   "main": "server.mjs",
   "scripts": {
     "start": "node server.mjs",
+    "demo": "node server.mjs --demo",
+    "test": "node server.mjs --test",
     "dev": "nodemon server.mjs"
   },
   "author": "",
