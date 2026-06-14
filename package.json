@@ -2,7 +2,7 @@
   "name": "cccashflow-server",
   "version": "0.1.0",
   "description": "",
-  "main": "server.js",
+  "main": "server.mjs",
   "scripts": {
     "start": "node server.mjs",
     "dev": "nodemon server.mjs"
