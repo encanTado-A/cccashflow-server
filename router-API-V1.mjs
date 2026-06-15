@@ -8,7 +8,6 @@ import logger from './logger.mjs';
 const ALLOWED_TABLES = [
     'AccountType',
     'Currency',
-    'MoneyCategory',
     'Accounts',
     'TransactionsLedger',
     'TransactionsJournal',
@@ -34,13 +33,27 @@ export default function createRouter(db, __dirname) {
         });
     }); // end get(v1/)
 
+    // --------------------------------------------------
+
     router.get('/v1/currency', logger, async (req, res) => {
-        var stmt = db.prepare(`SELECT * FROM Currency`);
-        var result = stmt.all();
+        let displayLimit = req.query.limit || 0;
+        let targetCurrency = req.query.targetCurrency || 0;
+        
+        if ( displayLimit ) {
+            var stmt = db.prepare(`SELECT * FROM Currency LIMIT ?`);
+            var result = stmt.all( displayLimit );
+        }
+        else if ( targetCurrency ) {
+            var stmt = db.prepare(`SELECT * FROM Currency WHERE id = ?`);
+            var result = stmt.all( displayLimit );
+        }
+        else {
+            var stmt = db.prepare(`SELECT * FROM Currency`);
+        }
             
-        res.status(200).json(result);
+        res.json(result);
     }); // end get(v1/currency)
-    
+
     router.post('/v1/currency', logger, async (req, res) => {
         var flag_error = false;
         var stmt = db.prepare(`INSERT INTO Currency VALUES (?, ?)`);
@@ -105,13 +118,17 @@ export default function createRouter(db, __dirname) {
         res.status(200).json(result);
     }); // end get(v1/accounttype)
 
-    router.get('/v1/moneycategory', logger, async (req, res) => {
-        var stmt = db.prepare(`SELECT * FROM MoneyCategory`);
-        var result = stmt.all();
+    // // --------------------------------------------------
+
+    // router.get('/v1/moneycategory', logger, async (req, res) => {
+    //     var stmt = db.prepare(`SELECT * FROM MoneyCategory`);
+    //     var result = stmt.all();
             
-        // console.log(`${result}`);
-        res.status(200).json(result);
-    }); // end get(v1/moneycategory)
+    //     // console.log(`${result}`);
+    //     res.status(200).json(result);
+    // }); // end get(v1/moneycategory)
+
+    // --------------------------------------------------
 
     router.get('/v1/accounts', logger, async (req, res) => {
         var stmt = db.prepare(`SELECT * FROM Accounts`);
@@ -121,13 +138,25 @@ export default function createRouter(db, __dirname) {
         res.status(200).json(result);
     }); // end get(v1/accounts)
 
+    // --------------------------------------------------
+
     router.get('/v1/transactionsledger', logger, async (req, res) => {
-        var stmt = db.prepare(`SELECT * FROM TransactionsLedger`);
+        var stmt = db.prepare(`SELECT * FROM TransactionsLedger LIMIT 50`);
         var result = stmt.all();
             
         // console.log(`${result}`);
         res.status(200).json(result);
     }); // end get(v1/transactionsledger)
+
+        router.get('/v1/transactionsledger/all', logger, async (req, res) => {
+        var stmt = db.prepare(`SELECT * FROM TransactionsLedger LIMIT 50`);
+        var result = stmt.all();
+            
+        // console.log(`${result}`);
+        res.status(200).json(result);
+    }); // end get(v1/transactionsledger)
+
+    // --------------------------------------------------
 
     router.get('/v1/transactionsjournal', logger, async (req, res) => {
         var stmt = db.prepare(`SELECT * FROM TransactionsJournal`);
@@ -136,6 +165,8 @@ export default function createRouter(db, __dirname) {
         // console.log(`${result}`);
         res.status(200).json(result);
     }); // end get(v1/transactionsjournal)
+
+    // --------------------------------------------------
 
     router.get('/v1/accountbalance', logger, async (req, res) => {
         var stmt = db.prepare(`SELECT * FROM AccountBalance`);
