@@ -1,7 +1,7 @@
 // Cjs
 const Database = require('better-sqlite3');
 const fs = require('fs');
-// const path = require('path');
+const path = require('path');
 // const env = require('dotenv');
 
 // env.config();
@@ -23,7 +23,7 @@ let db = null;
 const demoConnectSqliteDB = () => {
     console.log("status: call from test-db-connect.js");
     try {
-        const db_file_path = process.env.TEST_DATABASE_PATH;
+        const db_file_path = path.join(process.env.TEST_DATABASE_PATH, process.env.TEST_DATABASE_FILENAME);
 
         if ( ! fs.existsSync( db_file_path ) ) {
             console.log('status: database file does not exists');
