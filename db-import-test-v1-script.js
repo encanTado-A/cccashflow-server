@@ -4,6 +4,9 @@ const Database = require('better-sqlite3');
 const fs = require('fs');
 const url = require('node:url');
 const csv = require('csv-parser');
+const env = require('dotenv');
+
+env.config();
 
 // ##################################################
 
@@ -33,49 +36,51 @@ const isHelp = args.includes('--help') || args.includes('-h');
 if (isHelp) {
     console.log( `--all / -a \t\t : program will insert all the record found in the csv` );
     console.log( `--view / -v \t\t : program will NOT run any insertion from the csv` )
-    console.log( `-TC \t\t : insert for table Currency` );
-    console.log( `-TAT \t\t : insert for table AccountType` );
-    console.log( `-TA \t\t : insert for table Accounts` );
-    console.log( `-TJ \t\t : insert for table TransactionsJournal` );
-    console.log( `-TL \t\t : insert for table TransactionsLedger` );
+    console.log( `-TC \t\t\t : insert for table Currency` );
+    console.log( `-TAT \t\t\t : insert for table AccountType` );
+    console.log( `-TA \t\t\t : insert for table Accounts` );
+    console.log( `-TJ \t\t\t : insert for table TransactionsJournal` );
+    console.log( `-TL \t\t\tj : insert for table TransactionsLedger` );
     
     process.exit(0);
 }
 
 const flag_run_craete_all_table = args.includes('--all') || args.includes('-a');
 const flag_view_only = (! args.includes('--all') && ! args.includes('-a')) && (args.includes('--view') || args.includes('-v'));
-
-if ( ! flag_run_craete_all_table ) {
-    // let flag_run_insert_currency = false;
-    // let flag_run_insert_accounttype = false;
-    // let flag_run_insert_accounts = false;
-    // let flag_run_insert_transactionsjournal = false;
-    // let flag_run_insert_transactionsledger = false;
-
-    const isInsertCurrency = args.includes('-TC');
-    const isInsertAccountType = args.includes('-TAT');
-    const isInsertAccounts = args.includes('-A');
-    const isInsertTransactionsJournal = args.includes('-TJ');
-    const isInsertTransactionsLedger = args.includes('-TL');
-    
-    // console.log("no insertion would be made");
+if ( flag_view_only ) {
+    console.log("no insertion would be made");
 }
 
-console.log(__filename);
-console.log(__dirname);
+const isInsertCurrency = args.includes('-TC');
+const isInsertAccountType = args.includes('-TAT');
+const isInsertAccounts = args.includes('-A');
+const isInsertTransactionsJournal = args.includes('-TJ');
+const isInsertTransactionsLedger = args.includes('-TL');
+
+// if ( ! flag_run_craete_all_table ) {
+//     // let flag_run_insert_currency = false;
+//     // let flag_run_insert_accounttype = false;
+//     // let flag_run_insert_accounts = false;
+//     // let flag_run_insert_transactionsjournal = false;
+//     // let flag_run_insert_transactionsledger = false;
+
+// }
+
+// console.log(__filename);
+// console.log(__dirname);
 const __root = path.join(__dirname, "..");
 
 // ##################################################
+// path and filename definition
 
-// check db exist
-const demo_database_name = `test-06-14-v1.db`;
+const demo_database_name = process.env.TEST_DATABASE_FILENAME_v1;
 
 const demo_filename = [
-    `currency.csv`,
-    `account-type.csv`,
-    `demo-accounts-v3.1.csv`,
-    `test-1-data-23-26_ccc_tj.csv`,
-    `test-1-data-23-26-ccc-tl.csv`,
+    process.env.DEMO_CURRENCY_CSV,
+    process.env.DEMO_ACCOUNTTYPE_CSV,
+    process.env.DEMO_ACCOUNTS_CSV,
+    process.env.TEST_V1_TRANSACTIONSJOURNAL_CSV,
+    process.env.TEST_V1_TRANSACTIONSLEDGER_CSV,
 ];
 
 
@@ -95,6 +100,7 @@ if (! fs.existsSync( db_file_path )) {
 }
 
 // ##################################################
+// check db exist
 
 let db = null;
 try {
@@ -174,7 +180,7 @@ const rowMapperTransactionsLedger = (row) => ({
     "exchange_rate": row.exchange_rate
 });
 
-// init a wraper for batch insert
+// init a wraper function for batch insert
 let insertMany = db.transaction ( (rows, stmt) => {
     for ( const row of rows ) 
         stmt.run(row);
@@ -206,10 +212,10 @@ function importCSV ( CSVFilePath, tableName, insertSQL, rowMapper) {
             })
             .on('end', () => {
                 try {
-                    console.log(dataBuffer.slice(0,3));
+                    console.log( `csv data sample : \n${dataBuffer.slice(0,3)} `);
                     insertMany(dataBuffer, insertSQL);
                     // console.log(`csv to db completed`)
-                    console.log(`status: CSV file imported for ${tableName} has successfully processed. Total rows: ${dataBuffer.length}`);
+                    console.log(`status: CSV file imported for table ${tableName} has successfully processed. Total rows: ${dataBuffer.length}`);
                 } catch (error) {
                     console.error('error: Database insertion failed::', error);
                 }

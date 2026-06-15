@@ -3,17 +3,14 @@ const Database = require('better-sqlite3');
 const fs = require('fs');
 const path = require('node:path');
 const url = require('node:url');
+const env = require('dotenv');
+
+env.config();
 
 // ##################################################
-// check db exist
-const demo_filename = [
-    `test-06-14-v1.db`,
-    `currency.csv`,
-    `account-type.csv`,
-    `demo-accounts-v3.1.csv`,
-    `test-1-data-23-26_ccc_tj.csv`,
-    `test-1-data-23-26-ccc-tl.csv`,
-];
+// path and filename definition
+
+const demo_database_name = process.env.TEST_DATABASE_FILENAME_v1;
 
 const demo_table_name = [
     `Currency`,
@@ -25,10 +22,12 @@ const demo_table_name = [
 ];
 
 // ##################################################
+// check db exist
 
-const db_file_path = path.join(__dirname, "..", "databases", demo_filename[0]);
+const __root = path.join(__dirname, "..");
+const db_file_path = path.join(__root, "databases", demo_database_name);
 if (! fs.existsSync( db_file_path )) {
-    console.log('File does not exists');
+    console.log( `db file for path ${db_file_path} does not exists` );
     process.exit(-1);
 }
 
@@ -45,6 +44,7 @@ catch (e) {
 }
 
 // ##################################################
+// create tables
 
 const tableAccountType = db.prepare( "CREATE TABLE IF NOT EXISTS AccountType (id INTEGER PRIMARY KEY , description VARCHAR(16));" );
 const tableCurrency = db.prepare( "CREATE TABLE IF NOT EXISTS Currency (id CHAR(3) NOT NULL PRIMARY KEY, description VARCHAR(64));" );
@@ -100,7 +100,7 @@ const tableAccountBalance = db.prepare( `CREATE TABLE IF NOT EXISTS AccountBalan
     FOREIGN KEY (currency) REFERENCES Currency (id)
     );` );
 
-// init tables
+// init tables function
 const setupDatabaseTable = db.transaction( () => {
     // Open/Create the database file
     let info1 = null;
@@ -118,12 +118,6 @@ const setupDatabaseTable = db.transaction( () => {
 });
 
 if ( db != null ) {
-    // setupDatabase(db).then( () => {
-    //     console.log('db setup completed');
-    //     const stmt = db.prepare("SELECT sql FROM sqlite_schema WHERE type IN ('table', 'index') AND sql NOT NULL;");
-    //     stmt.run();
-    //     // stmt.exec(".schema");
-    // });
     try {
         const setupDB = setupDatabaseTable();
         const checking = db.prepare("SELECT sql FROM sqlite_schema WHERE type IN ('table', 'index') AND sql NOT NULL;").all();
