@@ -15,7 +15,7 @@ import logger from './logger.mjs';
 import demoConnectSqliteDB from './demo-db.cjs';
 import testConnectSqliteDB from './test-db-connect.cjs';
 import createRouterAdd from './router-add.mjs';
-import createRouterAPI from './router-APIV1.mjs';
+import createRouterAPI from './router-API-V1.mjs';
 import createRouterView from './router-view.mjs';
 
 /*
