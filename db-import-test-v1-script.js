@@ -7,6 +7,14 @@ const csv = require('csv-parser');
 const env = require('dotenv');
 
 env.config();
+// require env setting
+// TEST_DATABASE_FILENAME
+// DEMO_CURRENCY_CSV,
+// DEMO_ACCOUNTTYPE_CSV,
+// DEMO_ACCOUNTS_CSV,
+// TEST_V1_TRANSACTIONSJOURNAL_CSV,
+// TEST_V1_TRANSACTIONSLEDGER_CSV,
+
 
 // ##################################################
 
@@ -21,6 +29,7 @@ env.config();
 
 // ##################################################
 
+// custom Error type
 class ValidationError extends Error {
   constructor(message, statusCode = 400) {
     super(message); // Pass message to native Error constructor
@@ -29,6 +38,9 @@ class ValidationError extends Error {
     Error.captureStackTrace(this, this.constructor); // Maintain clean stack trace
   }
 }
+
+// ##################################################
+// script argument for custom import
 
 const args = process.argv || 0;
 
@@ -40,7 +52,8 @@ if (isHelp) {
     console.log( `-TAT \t\t\t : insert for table AccountType` );
     console.log( `-TA \t\t\t : insert for table Accounts` );
     console.log( `-TJ \t\t\t : insert for table TransactionsJournal` );
-    console.log( `-TL \t\t\tj : insert for table TransactionsLedger` );
+    console.log( `-TL \t\t\t : insert for table TransactionsLedger` );
+    console.log( `-AB \t\t\t : insert for table AccountBalance [not ready]` );
     
     process.exit(0);
 }
@@ -51,29 +64,23 @@ if ( flag_view_only ) {
     console.log("no insertion would be made");
 }
 
-const isInsertCurrency = args.includes('-TC');
-const isInsertAccountType = args.includes('-TAT');
-const isInsertAccounts = args.includes('-A');
-const isInsertTransactionsJournal = args.includes('-TJ');
-const isInsertTransactionsLedger = args.includes('-TL');
+const isInsertCurrency = args.includes('-TC') ?? 0;
+const isInsertAccountType = args.includes('-TAT') ?? 0;
+const isInsertAccounts = args.includes('-A') ?? 0;
+const isInsertTransactionsJournal = args.includes('-TJ') ?? 0;
+const isInsertTransactionsLedger = args.includes('-TL') ?? 0;
+const isInsertAccountBalance = args.includes('-AB') ?? 0;
 
-// if ( ! flag_run_craete_all_table ) {
-//     // let flag_run_insert_currency = false;
-//     // let flag_run_insert_accounttype = false;
-//     // let flag_run_insert_accounts = false;
-//     // let flag_run_insert_transactionsjournal = false;
-//     // let flag_run_insert_transactionsledger = false;
 
-// }
+// ##################################################
 
-// console.log(__filename);
-// console.log(__dirname);
+// __filename __dirname given in cjs
 const __root = path.join(__dirname, "..");
 
 // ##################################################
 // path and filename definition
 
-const demo_database_name = process.env.TEST_DATABASE_FILENAME_v1;
+const demo_database_name = process.env.TEST_DATABASE_FILENAME;
 
 const demo_filename = [
     process.env.DEMO_CURRENCY_CSV,
@@ -81,6 +88,7 @@ const demo_filename = [
     process.env.DEMO_ACCOUNTS_CSV,
     process.env.TEST_V1_TRANSACTIONSJOURNAL_CSV,
     process.env.TEST_V1_TRANSACTIONSLEDGER_CSV,
+    // process.env.TEST_V1_AccountBalance_CSV,
 ];
 
 
@@ -99,6 +107,13 @@ if (! fs.existsSync( db_file_path )) {
     process.exit(-1);
 }
 
+if ( flag_view_only ) {
+    console.log( "table can be created: " );
+    for (let i = 0; i < demo_table_name.length; i++) {
+        console.log(`\t\t${ demo_table_name[i] }`);
+    };
+}
+
 // ##################################################
 // check db exist
 
@@ -115,10 +130,20 @@ catch (e) {
     process.exit(-1);
 }
 
-console.log( "table to be created: " );
-for (let i = 0; i < demo_table_name.length; i++) {
-    console.log(`\t\t${ demo_table_name[i] }`);
-};
+if ( flag_run_craete_all_table ) {
+    console.log( "\ntable to be imported: " );
+    for (let i = 0; i < demo_table_name.length; i++) {
+        console.log(`\t\t${ demo_table_name[i] }`);
+    };
+}
+else {
+    if (isInsertCurrency) console.log(`\t\t${ demo_table_name[0] }`);
+    if (isInsertAccountType) console.log(`\t\t${ demo_table_name[1] }`);
+    if (isInsertAccounts) console.log(`\t\t${ demo_table_name[2] }`);
+    if (isInsertTransactionsJournal) console.log(`\t\t${ demo_table_name[3] }`);
+    if (isInsertTransactionsLedger) console.log(`\t\t${ demo_table_name[4] }`);
+    // if (isInsertAccountBalance) console.log(`\t\t${ demo_table_name[5] }`);
+}
 
 // init tables
 // call db-setpup script
@@ -225,7 +250,6 @@ function importCSV ( CSVFilePath, tableName, insertSQL, rowMapper) {
 // ##################################################
 
 if ( ! flag_view_only ) {
-
     try {
         if (flag_run_craete_all_table || isInsertCurrency) {
             console.log( `status: start run for table Currency` );
@@ -236,26 +260,27 @@ if ( ! flag_view_only ) {
             console.log( `status: start run for table AccountType` );
             importCSV(CSVAccountTypePath, demo_table_name[1], tableAccountTypestmt, rowMapperCurrencyAndAccountType);
             console.log( `status: finish run for table AccountType` );
-            
         }
         if (flag_run_craete_all_table || isInsertAccounts) {
             console.log( `status: start run for table Accounts` );
             importCSV(CSVAccountPath, demo_table_name[2], tableAccountstmt, rowMapperAccount);
             console.log( `status: finish run for table Accounts` );
-            
         }
         if (flag_run_craete_all_table || isInsertTransactionsJournal) {
             console.log( `status: start run for table TransactionsJournal` );
             importCSV(CSVTransactionsJournalPath, demo_table_name[3], tableTransactionsJournalstmt, rowMapperTransactionsJournal);
             console.log( `status: finish run for table TransactionsJournal` );
-            
         }
         if (flag_run_craete_all_table || isInsertTransactionsLedger) {
             console.log( `status: start run for table TransactionsLedger` );
             importCSV(CSVTransactionsLedgerPath, demo_table_name[4], tableTransactionsLedgerstmt, rowMapperTransactionsLedger);
             console.log( `status: finish run for table TransactionsLedger` );
-            
         }
+        // if (flag_run_craete_all_table || isInsertAccountBalance) {
+        //     console.log( `status: start run for table TransactionsLedger` );
+        //     importCSV(CSVTransactionsLedgerPath, demo_table_name[5], tableTransactionsLedgerstmt, rowMapperTransactionsLedger);
+        //     console.log( `status: finish run for table TransactionsLedger` );
+        // }
     }
     catch (e) {
         console.log( `insertion error: ${e}` );

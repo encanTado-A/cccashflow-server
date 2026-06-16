@@ -6,11 +6,47 @@ const url = require('node:url');
 const env = require('dotenv');
 
 env.config();
+// require env setting
+// TEST_DATABASE_FILENAME
+
+
+// ##################################################
+// script argument for custom import
+
+const args = process.argv || 0;
+
+const isHelp = args.includes('--help') || args.includes('-h');
+if (isHelp) {
+    console.log( `--all / -a \t\t : program will create all the target table with given definition` );
+    console.log( `--view / -v \t\t : program will NOT run any creation` )
+    console.log( `-TC \t\t\t : create for table Currency` );
+    console.log( `-TAT \t\t\t : create for table AccountType` );
+    console.log( `-TA \t\t\t : create for table Accounts` );
+    console.log( `-TJ \t\t\t : create for table TransactionsJournal` );
+    console.log( `-TL \t\t\t : create for table TransactionsLedger` );
+    console.log( `-AB \t\t\t : create for table AccountBalance` );
+    
+    process.exit(0);
+}
+
+const flag_run_craete_all_table = args.includes('--all') || args.includes('-a');
+const flag_view_only = (! args.includes('--all') && ! args.includes('-a')) && (args.includes('--view') || args.includes('-v'));
+if ( flag_view_only ) {
+    console.log("no table creation would be made");
+}
+
+const isCreateCurrency = args.includes('-TC') ?? 0;
+const isCreateAccountType = args.includes('-TAT') ?? 0;
+const isCreateAccounts = args.includes('-A') ?? 0;
+const isCreateTransactionsJournal = args.includes('-TJ') ?? 0;
+const isCreateTransactionsLedger = args.includes('-TL') ?? 0;
+const isCreateAccountBalance = args.includes('-AB') ?? 0;
+
 
 // ##################################################
 // path and filename definition
 
-const demo_database_name = process.env.TEST_DATABASE_FILENAME_v1;
+const demo_database_name = process.env.TEST_DATABASE_FILENAME;
 
 const demo_table_name = [
     `Currency`,
@@ -29,6 +65,13 @@ const db_file_path = path.join(__root, "databases", demo_database_name);
 if (! fs.existsSync( db_file_path )) {
     console.log( `db file for path ${db_file_path} does not exists` );
     process.exit(-1);
+}
+
+if ( flag_view_only ) {
+    console.log( "table can be created: " );
+    for (let i = 0; i < demo_table_name.length; i++) {
+        console.log(`\t\t${ demo_table_name[i] }`);
+    };
 }
 
 let db = null;
@@ -101,25 +144,26 @@ const tableAccountBalance = db.prepare( `CREATE TABLE IF NOT EXISTS AccountBalan
     );` );
 
 // init tables function
-const setupDatabaseTable = db.transaction( () => {
+const setupDatabaseTable = db.transaction( ( flagALL, flagC, flagAT, flagAS, flagTJ, flagTL, flagAB ) => {
     // Open/Create the database file
     let info1 = null;
     // info table
-    info1 = tableAccountType.run();
-    info1 = tableCurrency.run();
-    info1 = tableAccounts.run();
+    if (flagC) info1 = tableCurrency.run();
+    if (flagAT) info1 = tableAccountType.run();
+    if (flagAS) info1 = tableAccounts.run();
     // transaction table
-    info1 = tableTransactionJournal.run();
-    info1 = tableTransactionLedger.run();
+    if (flagTJ) info1 = tableTransactionJournal.run();
+    if (flagTL) info1 = tableTransactionLedger.run();
     // temp bal table
-    info1 = tableAccountBalance.run();
+    if (flagAB) info1 = tableAccountBalance.run();
 
     return info1;
 });
 
-if ( db != null ) {
+if ( db != null && flag_run_craete_all_table ) {
     try {
-        const setupDB = setupDatabaseTable();
+        const setupDB = setupDatabaseTable( flag_run_craete_all_table, isCreateCurrency , isCreateAccountType , 
+            isCreateAccounts , isCreateTransactionsJournal , isCreateTransactionsLedger , isCreateAccountBalance );
         const checking = db.prepare("SELECT sql FROM sqlite_schema WHERE type IN ('table', 'index') AND sql NOT NULL;").all();
         console.log(`.schema: \n${JSON.stringify(checking, null, 2)}`)
     }
