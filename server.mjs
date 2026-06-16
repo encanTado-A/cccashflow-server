@@ -9,6 +9,7 @@ import express from 'express';
 import Database from 'better-sqlite3';
 // import csv from 'csv-parser';
 import env from 'dotenv';
+import Chart from 'chart.js/auto';
 
 // local js
 import logger from './logger.mjs';
@@ -35,6 +36,7 @@ const __dirname = path.dirname(__filename);
 // view engine
 app.set( 'view engine', 'ejs' );
 app.set( 'views', path.join(__dirname, 'src', 'views') );
+app.use('/src', express.static(path.join(__dirname, 'src')));
 app.use( express.static(path.join(__dirname, 'public'), { index: false }) );
 
 // middleware
@@ -91,8 +93,11 @@ app.get('/', logger, async (req, res) => {
 
 app.get('/test', logger, async (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'test.html'));
-    // res.render('index.html', { username: 'Andrew' }); 
 });
+
+app.get('/testejs', logger, async (req, res) => {
+    res.render('test', { title: 'Home', username: 'Andrew' });
+}); 
 
 // --------------------------------------------------
 // /add pages

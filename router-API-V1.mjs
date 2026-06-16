@@ -24,6 +24,14 @@ function getColumnsFromPragma(db, tableName) {
     }
 }
 
+function buildWhereClause( query ){
+    const whereDateBetween = query.DateBetween ?? 0 ; 
+    // example: nearest_3_Month, year_to_date, month_to_date
+
+    `AND TL.date_of_transaction >= DATE('now', '-3 months', 'start of month')`
+    `AND TL.date_of_transaction <= DATE('now')`
+}
+
 export default function createRouter(db, __dirname) {
     const router = express.Router();
 
@@ -32,6 +40,19 @@ export default function createRouter(db, __dirname) {
             status: "okay"
         });
     }); // end get(v1/)
+
+    // --------------------------------------------------
+    // general endpoint approach
+
+    router.get('/v1/data', async (req, res) => {
+        const table = req.query.table;
+        const limit = Number(req.query.limit ?? 50);
+        const sort = req.query.sort ?? 0;
+        const where = buildWhereClause(req.query);
+        const sql = `SELECT * FROM ${table} ${where} ORDER BY ${sort} LIMIT ?`;
+        const rows = db.prepare(sql).all(...params, limit);
+        res.json(rows);
+    });
 
     // --------------------------------------------------
 
@@ -54,7 +75,7 @@ export default function createRouter(db, __dirname) {
                 result = stmt.all();    
             }
         }
-        catch (error) {
+        catch (sqlite_error) {
             console.error( "SQLite SELECT error:", sqlite_error.message );
             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
         }
@@ -67,7 +88,7 @@ export default function createRouter(db, __dirname) {
             const stmt = db.prepare(`INSERT INTO Currency VALUES (?, ?)`);
             result = stmt.run(req.body.id, req.body.description);
         }
-        catch (error) {
+        catch (sqlite_error) {
             console.error( "SQLite INSERT error:", sqlite_error.message );
             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
         }
@@ -80,7 +101,7 @@ export default function createRouter(db, __dirname) {
             const stmt = db.prepare(`UPDATE Currency SET description = ? WHERE id = ?`);
             result = stmt.run(req.body.id, req.body.description);
         }
-        catch (error) {
+        catch (sqlite_error) {
             console.error( "SQLite UPDATE error:", sqlite_error.message );
             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
         }
@@ -93,7 +114,7 @@ export default function createRouter(db, __dirname) {
             const stmt = db.prepare(`DELETE FROM Currency WHERE id = ?`);
             result = stmt.run(req.body.id);
         }
-        catch (error) {
+        catch (sqlite_error) {
             console.error( 'SQLite UPDATE error:', sqlite_error.message );
             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
         }
@@ -120,7 +141,7 @@ export default function createRouter(db, __dirname) {
                 result = stmt.all();    
             }
         }
-        catch (error) {
+        catch (sqlite_error) {
             console.error( "SQLite SELECT error:", sqlite_error.message );
             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
         }
@@ -147,7 +168,7 @@ export default function createRouter(db, __dirname) {
                 result = stmt.all();    
             }
         }
-        catch (error) {
+        catch (sqlite_error) {
             console.error( "SQLite SELECT error:", sqlite_error.message );
             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
         }
@@ -160,7 +181,7 @@ export default function createRouter(db, __dirname) {
             const stmt = db.prepare(`INSERT INTO Accounts VALUES (?, ?)`);
             result = stmt.run(req.body.id, req.body.description);
         }
-        catch (error) {
+        catch (sqlite_error) {
             console.error( "SQLite INSERT error:", sqlite_error.message );
             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
         }
@@ -186,7 +207,7 @@ export default function createRouter(db, __dirname) {
                 const stmt = db.prepare(`DELETE FROM Accounts WHERE id = ?`);
                 const result = stmt.run(req.body.id);
             }
-            catch (error) {
+            catch (sqlite_error) {
                 console.error( 'SQLite UPDATE error:', sqlite_error.message );
                 return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
             }
@@ -206,14 +227,16 @@ export default function createRouter(db, __dirname) {
         const metadataDetail = req.query.metadataDetail ?? {};
         const displayLatestMonth = req.query.displayLatestMonth ?? 0;
         const displayNearest3Month = req.query.displayNearest3Month ?? 0;
-        
+        const countMode = req.query.countMode ?? 0;
+        const groupByMonth = req.query.groupByMonth ?? 0;
+
         let result;
         try {
             if ( displayAll ) {
                 const stmt = db.prepare(`SELECT * FROM TransactionsJournal`);
                 result = stmt.all();
             }
-            if ( displayLimit ) {
+            else if ( displayLimit ) {
                 const stmt = db.prepare(`SELECT * FROM TransactionsJournal LIMIT ?`);
                 result = stmt.all( displayLimit );
             }
@@ -225,6 +248,16 @@ export default function createRouter(db, __dirname) {
                 const stmt = db.prepare(`SELECT * FROM TransactionsJournal 
                                             WHERE created_at >= date('now', 'start of month');`);
                     result = stmt.all();
+            }
+            else if ( displayNearest3Month && (countMode && groupByMonth) ) {
+                const stmt = db.prepare(`SELECT COUNT(*) AS count, strftime('%Y-%m', created_at) AS date 
+                                        FROM TransactionsJournal 
+                                        WHERE created_at >= DATE('now', '-3 months', 'start of month')
+                                            AND created_at <= DATE('now')
+                                        GROUP BY date
+                                        ORDER BY date ASC;
+                                            `);
+                result = stmt.all();
             }
             else if ( displayNearest3Month ) {
                 const stmt = db.prepare(`SELECT * FROM TransactionsJournal 
@@ -254,6 +287,7 @@ export default function createRouter(db, __dirname) {
         const metadataDetail = req.query.metadataDetail ?? {};
         const displayLatestMonth = req.query.displayLatestMonth ?? 0;
         const displayNearest3Month = req.query.displayNearest3Month ?? 0;
+        const graphForDemo = req.query.graphForDemo ?? 0;
         
         let result;
         try {
@@ -261,7 +295,7 @@ export default function createRouter(db, __dirname) {
                 const stmt = db.prepare(`SELECT * FROM TransactionsLedger`);
                 result = stmt.all();
             }
-            if ( displayLimit ) {
+            else if ( displayLimit ) {
                 const stmt = db.prepare(`SELECT * FROM TransactionsLedger LIMIT ?`);
                 result = stmt.all( displayLimit );
             }
@@ -278,6 +312,19 @@ export default function createRouter(db, __dirname) {
                                         WHERE date_of_transaction >= date('now', 'start of month')`);
                 result = stmt.all();
             }
+            else if ( displayNearest3Month && graphForDemo ) {
+                // stmt : getting and returning all the account name and their spending / earing amount in the previous 3 month
+                const stmt = db.prepare(`SELECT ACCS.name AS account, 
+                                        SUM( CASE WHEN TL.is_credit = 0 THEN amount ELSE 0 END ) - SUM(CASE WHEN TL.is_credit = 1 THEN amount ELSE 0 END) AS "total_amount"
+                                        FROM TransactionsLedger AS TL LEFT JOIN Accounts AS ACCS
+                                        WHERE TL.account_id = ACCS.id
+                                            AND TL.date_of_transaction >= DATE('now', '-3 months', 'start of month')
+                                            AND TL.date_of_transaction <= DATE('now')
+                                            AND ACCS.account_type = 2
+                                        GROUP BY account;
+                                            `);
+                result = stmt.all();
+            }
             else if ( displayNearest3Month ) {
                 const stmt = db.prepare(`SELECT * FROM TransactionsLedger 
                                         WHERE date_of_transaction >= DATE('now', '-3 months', 'start of month')
@@ -289,11 +336,11 @@ export default function createRouter(db, __dirname) {
                 result = stmt.all();    
             }
         }
-        catch (error) {
+        catch (sqlite_error) {
             console.error( "SQLite SELECT error:", sqlite_error.message );
             return res.status(400).json( { "status": "error", "sql-error-message": `${sqlite_error.message}` } );
         }
-        return res.json({ "status": "okay", "result": result});
+        return res.json( result );
     }); // end get(v1/transactionsledger)
 
     // --------------------------------------------------
@@ -315,7 +362,7 @@ export default function createRouter(db, __dirname) {
                 result = stmt.all();    
             }
         }
-        catch (error) {
+        catch (sqlite_error) {
             console.error( "SQLite SELECT error:", sqlite_error.message );
             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
         }
@@ -335,7 +382,7 @@ export default function createRouter(db, __dirname) {
                 return res.json( { "status": "Not Found" } ) 
             }
         }
-        catch (error) {
+        catch (sqlite_error) {
             console.error( "SQLite INSERT error:", sqlite_error.message );
             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
         }
