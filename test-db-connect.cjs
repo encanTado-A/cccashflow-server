@@ -21,7 +21,8 @@ const demo_table_name = [
 let db = null;
 
 const demoConnectSqliteDB = () => {
-    console.log("status: call from test-db-connect.js");
+    console.log("status: call from test-db-connect.cjs");
+    console.log(`status: connecting to ${process.env.TEST_DATABASE_FILENAME}`);
     try {
         const db_file_path = path.join(process.env.TEST_DATABASE_PATH, process.env.TEST_DATABASE_FILENAME);
 
