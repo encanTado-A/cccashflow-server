@@ -148,14 +148,14 @@ const setupDatabaseTable = db.transaction( ( flagALL, flagC, flagAT, flagAS, fla
     // Open/Create the database file
     let info1 = null;
     // info table
-    if (flagC) info1 = tableCurrency.run();
-    if (flagAT) info1 = tableAccountType.run();
-    if (flagAS) info1 = tableAccounts.run();
+    if (flagALL || flagC) info1 = tableCurrency.run();
+    if (flagALL || flagAT) info1 = tableAccountType.run();
+    if (flagALL || flagAS) info1 = tableAccounts.run();
     // transaction table
-    if (flagTJ) info1 = tableTransactionJournal.run();
-    if (flagTL) info1 = tableTransactionLedger.run();
+    if (flagALL || flagTJ) info1 = tableTransactionJournal.run();
+    if (flagALL || flagTL) info1 = tableTransactionLedger.run();
     // temp bal table
-    if (flagAB) info1 = tableAccountBalance.run();
+    if (flagALL || flagAB) info1 = tableAccountBalance.run();
 
     return info1;
 });
