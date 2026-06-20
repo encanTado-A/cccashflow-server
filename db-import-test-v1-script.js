@@ -12,8 +12,8 @@ env.config();
 // DEMO_CURRENCY_CSV,
 // DEMO_ACCOUNTTYPE_CSV,
 // DEMO_ACCOUNTS_CSV,
-// TEST_V1_TRANSACTIONSJOURNAL_CSV,
-// TEST_V1_TRANSACTIONSLEDGER_CSV,
+// TEST_TRANSACTIONSJOURNAL_CSV,
+// TEST_TRANSACTIONSLEDGER_CSV,
 
 
 // ##################################################
@@ -66,7 +66,7 @@ if ( flag_view_only ) {
 
 const isInsertCurrency = args.includes('-TC') ?? 0;
 const isInsertAccountType = args.includes('-TAT') ?? 0;
-const isInsertAccounts = args.includes('-A') ?? 0;
+const isInsertAccounts = args.includes('-TA') ?? 0;
 const isInsertTransactionsJournal = args.includes('-TJ') ?? 0;
 const isInsertTransactionsLedger = args.includes('-TL') ?? 0;
 const isInsertAccountBalance = args.includes('-AB') ?? 0;
@@ -83,12 +83,12 @@ const __root = path.join(__dirname, "..");
 const demo_database_name = process.env.TEST_DATABASE_FILENAME;
 
 const demo_filename = [
-    process.env.DEMO_CURRENCY_CSV,
-    process.env.DEMO_ACCOUNTTYPE_CSV,
-    process.env.DEMO_ACCOUNTS_CSV,
-    process.env.TEST_V1_TRANSACTIONSJOURNAL_CSV,
-    process.env.TEST_V1_TRANSACTIONSLEDGER_CSV,
-    // process.env.TEST_V1_AccountBalance_CSV,
+    process.env.TEST_CURRENCY_CSV,
+    process.env.TEST_ACCOUNTTYPE_CSV,
+    process.env.TEST_ACCOUNTS_CSV,
+    process.env.TEST_TRANSACTIONSJOURNAL_CSV,
+    process.env.TEST_TRANSACTIONSLEDGER_CSV,
+    process.env.TEST_ACCOUNTBALANCE_CSV,
 ];
 
 
@@ -108,7 +108,7 @@ if (! fs.existsSync( db_file_path )) {
 }
 
 if ( flag_view_only ) {
-    console.log( "table can be created: " );
+    console.log( "table can be imported: " );
     for (let i = 0; i < demo_table_name.length; i++) {
         console.log(`\t\t${ demo_table_name[i] }`);
     };
@@ -130,8 +130,8 @@ catch (e) {
     process.exit(-1);
 }
 
+console.log( "\ntable to be imported: " );
 if ( flag_run_craete_all_table ) {
-    console.log( "\ntable to be imported: " );
     for (let i = 0; i < demo_table_name.length; i++) {
         console.log(`\t\t${ demo_table_name[i] }`);
     };
@@ -142,7 +142,7 @@ else {
     if (isInsertAccounts) console.log(`\t\t${ demo_table_name[2] }`);
     if (isInsertTransactionsJournal) console.log(`\t\t${ demo_table_name[3] }`);
     if (isInsertTransactionsLedger) console.log(`\t\t${ demo_table_name[4] }`);
-    // if (isInsertAccountBalance) console.log(`\t\t${ demo_table_name[5] }`);
+    if (isInsertAccountBalance) console.log(`\t\t${ demo_table_name[5] }`);
 }
 
 // init tables
@@ -163,12 +163,16 @@ let tableTransactionsJournalstmt = db.prepare(`INSERT INTO TransactionsJournal
 let tableTransactionsLedgerstmt = db.prepare(`INSERT INTO TransactionsLedger 
     (id, transaction_id, date_of_transaction, account_id, amount, is_credit, currency, is_foreign, exchange_rate) 
     VALUES (@id, @transaction_id, @date_of_transaction, @account_id, @amount, @is_credit, @currency, @is_foreign, @exchange_rate)`);
+let tableAccountBalancestmt = db.prepare(`INSERT INTO AccountBalance 
+    (id, account_id, balance, currency, updated_at) 
+    VALUES (@id, @account_id, @balance, @currency, @updated_at)`);
 
 const CSVCurrencyPath = path.join( __root, "databases",  demo_filename[0]);
 const CSVAccountTypePath = path.join( __root, "databases",  demo_filename[1]);
 const CSVAccountPath = path.join( __root, "databases",  demo_filename[2]);
 const CSVTransactionsJournalPath = path.join( __root, "databases",  demo_filename[3]);
 const CSVTransactionsLedgerPath = path.join( __root, "databases",  demo_filename[4]);
+const CSVAccountBalancePath = path.join( __root, "databases",  demo_filename[5]);
 
 const rowMapperCurrencyAndAccountType = (row) => ({
     "id": row.id, 
@@ -205,13 +209,33 @@ const rowMapperTransactionsLedger = (row) => ({
     "exchange_rate": row.exchange_rate
 });
 
+const rowMapperAccountBalance = (row) => ({
+    "id": row.id,
+    "account_id": row.account_id,
+    "balance": row.balance,
+    "currency": row.currency,
+    "updated_at": row.updated_at
+});
+
 // init a wraper function for batch insert
 let insertMany = db.transaction ( (rows, stmt) => {
     for ( const row of rows ) 
         stmt.run(row);
 });
 
-function importCSV ( CSVFilePath, tableName, insertSQL, rowMapper) {
+
+function logImportResult(tableName, status, details = '') {
+    importResults.push({ tableName, status, details });
+
+    if (status === 'success') {
+        console.log(`status: success for table ${tableName} - ${details}`);
+    } else {
+        console.error(`status: failed for table ${tableName} - ${details}`);
+    }
+}
+
+async function importCSV ( CSVFilePath, tableName, insertSQL, rowMapper) {
+    return new Promise((resolve, reject) => {
         const dataBuffer = [];
         
         if ( ! fs.existsSync( CSVFilePath ) ) {
@@ -220,74 +244,93 @@ function importCSV ( CSVFilePath, tableName, insertSQL, rowMapper) {
         }
         console.log( `status: csv file path: ${CSVFilePath}` )
 
-        const methodToInput = demo_table_name.indexOf(tableName);
+        // const methodToInput = demo_table_name.indexOf(tableName);
 
-        fs.createReadStream( CSVFilePath )
-            .pipe(csv())
-            .on('data', (row) => {
+        const stream = fs.createReadStream( CSVFilePath ).pipe(csv());
+
+        stream.on('data', (row) => {
+            try {
                 // row is an object where keys are the record
                 const isRowValid = Object.values(row).every(value => value !== undefined);
-
+    
                 if ( !isRowValid ) {
                     // console.warn('row with undefined data:', row);
                     throw ValidationError( "row with undefined data", -1 );
                 }
                 // data pass undefined test
                 dataBuffer.push(rowMapper(row));
-            })
-            .on('end', () => {
-                try {
-                    console.log( `csv data sample : \n${dataBuffer.slice(0,3)} `);
-                    insertMany(dataBuffer, insertSQL);
-                    // console.log(`csv to db completed`)
-                    console.log(`status: CSV file imported for table ${tableName} has successfully processed. Total rows: ${dataBuffer.length}`);
-                } catch (error) {
-                    console.error('error: Database insertion failed::', error);
-                }
-            });
-};
+            }
+            catch (error) {
+                stream.destroy(error);
+            }
+        });
+
+        stream.on('error', (error) => {
+            logImportResult(tableName, 'failed', error.message);
+            reject(error);
+        });
+
+        stream.on('end', () => {
+            try {
+                console.log( `csv data sample : \n${ JSON.stringify( dataBuffer.slice(0,3), null, 2 ) } `);
+                insertMany(dataBuffer, insertSQL);
+                logImportResult(tableName, 'success', `processed ${dataBuffer.length} rows`);
+                resolve({ tableName, rows: dataBuffer.length, status: 'success' });
+            } catch (error) {
+                logImportResult(tableName, 'failed', error.message);
+                reject(error);
+            }
+        });
+    });
+}; // end async importCSV ()
 
 // ##################################################
 
-if ( ! flag_view_only ) {
-    try {
-        if (flag_run_craete_all_table || isInsertCurrency) {
-            console.log( `status: start run for table Currency` );
-            importCSV(CSVCurrencyPath, demo_table_name[0], tableCurrencystmt, rowMapperCurrencyAndAccountType);
-            console.log( `status: finish run for table Currency` );
+async function runImports() {
+    if ( ! flag_view_only ) {
+        try {
+            if (flag_run_craete_all_table || isInsertCurrency) {
+                console.log( `status: start run for table Currency` );
+                await importCSV(CSVCurrencyPath, demo_table_name[0], tableCurrencystmt, rowMapperCurrencyAndAccountType);
+            }
+            if (flag_run_craete_all_table || isInsertAccountType) {
+                console.log( `status: start run for table AccountType` );
+                await importCSV(CSVAccountTypePath, demo_table_name[1], tableAccountTypestmt, rowMapperCurrencyAndAccountType);
+            }
+            if (flag_run_craete_all_table || isInsertAccounts) {
+                console.log( `status: start run for table Accounts` );
+                await importCSV(CSVAccountPath, demo_table_name[2], tableAccountstmt, rowMapperAccount);
+            }
+            if (flag_run_craete_all_table || isInsertTransactionsJournal) {
+                console.log( `status: start run for table TransactionsJournal` );
+                await importCSV(CSVTransactionsJournalPath, demo_table_name[3], tableTransactionsJournalstmt, rowMapperTransactionsJournal);
+            }
+            if (flag_run_craete_all_table || isInsertTransactionsLedger) {
+                console.log( `status: start run for table TransactionsLedger` );
+                await importCSV(CSVTransactionsLedgerPath, demo_table_name[4], tableTransactionsLedgerstmt, rowMapperTransactionsLedger);
+            }
+            if (flag_run_craete_all_table || isInsertAccountBalance) {
+                console.log( `status: start run for table TransactionsLedger` );
+                await importCSV(CSVAccountBalancePath, demo_table_name[5], tableAccountBalancestmt, rowMapperAccountBalance);
+            }
         }
-        if (flag_run_craete_all_table || isInsertAccountType) {
-            console.log( `status: start run for table AccountType` );
-            importCSV(CSVAccountTypePath, demo_table_name[1], tableAccountTypestmt, rowMapperCurrencyAndAccountType);
-            console.log( `status: finish run for table AccountType` );
+        catch (e) {
+            console.log( `insertion error: ${e}` );
         }
-        if (flag_run_craete_all_table || isInsertAccounts) {
-            console.log( `status: start run for table Accounts` );
-            importCSV(CSVAccountPath, demo_table_name[2], tableAccountstmt, rowMapperAccount);
-            console.log( `status: finish run for table Accounts` );
-        }
-        if (flag_run_craete_all_table || isInsertTransactionsJournal) {
-            console.log( `status: start run for table TransactionsJournal` );
-            importCSV(CSVTransactionsJournalPath, demo_table_name[3], tableTransactionsJournalstmt, rowMapperTransactionsJournal);
-            console.log( `status: finish run for table TransactionsJournal` );
-        }
-        if (flag_run_craete_all_table || isInsertTransactionsLedger) {
-            console.log( `status: start run for table TransactionsLedger` );
-            importCSV(CSVTransactionsLedgerPath, demo_table_name[4], tableTransactionsLedgerstmt, rowMapperTransactionsLedger);
-            console.log( `status: finish run for table TransactionsLedger` );
-        }
-        // if (flag_run_craete_all_table || isInsertAccountBalance) {
-        //     console.log( `status: start run for table TransactionsLedger` );
-        //     importCSV(CSVTransactionsLedgerPath, demo_table_name[5], tableTransactionsLedgerstmt, rowMapperTransactionsLedger);
-        //     console.log( `status: finish run for table TransactionsLedger` );
-        // }
+    } // end if ( ! flag_view_only )
+
+    console.log('import summary:');
+    for (const entry of importResults) {
+        console.log(`- ${entry.tableName}: ${entry.status} - ${entry.details}`);
     }
-    catch (e) {
-        console.log( `insertion error: ${e}` );
-    }
-} // end if ( ! flag_view_only )
+}
 
 // ##################################################
+const importResults = [];
+
+runImports().catch((error) => {
+    console.error('script import failed:', error);
+});
 
 console.log('script import finish');
 // i guess like memory allocaiton you need manually "delete" it

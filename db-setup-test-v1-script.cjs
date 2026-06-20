@@ -37,7 +37,7 @@ if ( flag_view_only ) {
 
 const isCreateCurrency = args.includes('-TC') ?? 0;
 const isCreateAccountType = args.includes('-TAT') ?? 0;
-const isCreateAccounts = args.includes('-A') ?? 0;
+const isCreateAccounts = args.includes('-TA') ?? 0;
 const isCreateTransactionsJournal = args.includes('-TJ') ?? 0;
 const isCreateTransactionsLedger = args.includes('-TL') ?? 0;
 const isCreateAccountBalance = args.includes('-AB') ?? 0;
@@ -160,7 +160,7 @@ const setupDatabaseTable = db.transaction( ( flagALL, flagC, flagAT, flagAS, fla
     return info1;
 });
 
-if ( db != null && flag_run_craete_all_table ) {
+if ( db != null ) {
     try {
         const setupDB = setupDatabaseTable( flag_run_craete_all_table, isCreateCurrency , isCreateAccountType , 
             isCreateAccounts , isCreateTransactionsJournal , isCreateTransactionsLedger , isCreateAccountBalance );
