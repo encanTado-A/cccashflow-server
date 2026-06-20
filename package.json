@@ -7,6 +7,7 @@
     "start": "node server.mjs",
     "demo": "node server.mjs --demo",
     "test": "node server.mjs --test",
+    "testmon": "nodemon server.mjs --test",
     "dev": "nodemon server.mjs"
   },
   "author": "",
@@ -18,5 +19,8 @@
     "dotenv": "^17.4.2",
     "ejs": "^6.0.1",
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
