@@ -24,13 +24,74 @@ function getColumnsFromPragma(db, tableName) {
     }
 }
 
-function buildWhereClause( query ){
-    const whereDateBetween = query.DateBetween ?? 0 ; 
-    // example: nearest_3_Month, year_to_date, month_to_date
+// function buildWhereClause ( query ){
+//     const table = req.query.table;
+//     const whereDateBetween = query.DateBetween ?? 0 ;
+//     // example: nearest_6_Month, nearest_3_month, year_to_date, month_to_date
 
-    `AND TL.date_of_transaction >= DATE('now', '-3 months', 'start of month')`
-    `AND TL.date_of_transaction <= DATE('now')`
-}
+//     const whereTargetField = query.whereTargetField ?? 0 ;
+//     const whereTargetFieldValue = query.whereTargetFieldValue ?? 0 ;
+
+//     let whereClause = "";
+//     let flagStart = true;
+
+//     if ( whereTargetField ) {
+//         switch ( whereTargetField ) {
+//             case "":
+//                 break;
+//             default:
+//                 break;
+//         }
+//     }
+
+//     if ( whereDateBetween ) {
+//         switch (whereDateBetween) {
+//         case "user":
+//             if (table == "tj") {
+//                 if (flagStart) whereClause += `created_at >= DATE('now', '-5 months', 'start of month') AND created_at <= DATE('now')`;
+//                 else whereClause += `AND created_at >= DATE('now', '-5 months', 'start of month') AND created_at <= DATE('now')`
+//             }
+//             else if ( table == "tl") {
+//                 if (flagStart) whereClause += `date_of_transaction >= DATE('now', '-5 months', 'start of month') AND date_of_transaction <= DATE('now')`;
+//                 else whereClause += `AND date_of_transaction >= DATE('now', '-5 months', 'start of month') AND date_of_transaction <= DATE('now')`
+//             }
+//             break;
+    
+//         case "nearest_3_month":
+//             if (table == "tj") {
+//                 if (flagStart) whereClause += `created_at >= DATE('now', '-5 months', 'start of month') AND created_at <= DATE('now')`;
+//                 else whereClause += `AND created_at >= DATE('now', '-5 months', 'start of month') AND created_at <= DATE('now')`
+//             }
+//             else if ( table == "tl") {
+//                 if (flagStart) whereClause += `date_of_transaction >= DATE('now', '-5 months', 'start of month') AND date_of_transaction <= DATE('now')`;
+//                 else whereClause += `AND date_of_transaction >= DATE('now', '-5 months', 'start of month') AND date_of_transaction <= DATE('now')`
+//             }
+    
+//         case "year_to_date":
+//             if (table == "tj") {
+//                 if (flagStart) whereClause += `created_at >= DATE('now', '-5 months', 'start of month') AND created_at <= DATE('now')`;
+//                 else whereClause += `AND created_at >= DATE('now', '-5 months', 'start of month') AND created_at <= DATE('now')`
+//             }
+//             else if ( table == "tl") {
+//                 if (flagStart) whereClause += `date_of_transaction >= DATE('now', '-5 months', 'start of month') AND date_of_transaction <= DATE('now')`;
+//                 else whereClause += `AND date_of_transaction >= DATE('now', '-5 months', 'start of month') AND date_of_transaction <= DATE('now')`
+//             }
+    
+//         case "month_to_date":
+//             if (table == "tj") {
+//                 if (flagStart) whereClause += `created_at >= DATE('now', '-5 months', 'start of month') AND created_at <= DATE('now')`;
+//                 else whereClause += `AND created_at >= DATE('now', '-5 months', 'start of month') AND created_at <= DATE('now')`
+//             }
+//             else if ( table == "tl") {
+//                 if (flagStart) whereClause += `date_of_transaction >= DATE('now', '-5 months', 'start of month') AND date_of_transaction <= DATE('now')`;
+//                 else whereClause += `AND date_of_transaction >= DATE('now', '-5 months', 'start of month') AND date_of_transaction <= DATE('now')`
+//             }
+    
+//         default:
+//             break;
+//         }
+//     }
+// } // end buildWhereClause ()
 
 export default function createRouter(db, __dirname) {
     const router = express.Router();
@@ -44,14 +105,130 @@ export default function createRouter(db, __dirname) {
     // --------------------------------------------------
     // general endpoint approach
 
-    router.get('/v1/data', async (req, res) => {
-        const table = req.query.table;
-        const limit = Number(req.query.limit ?? 50);
-        const sort = req.query.sort ?? 0;
-        const where = buildWhereClause(req.query);
-        const sql = `SELECT * FROM ${table} ${where} ORDER BY ${sort} LIMIT ?`;
-        const rows = db.prepare(sql).all(...params, limit);
-        res.json(rows);
+    // router.get('/v1/data', async (req, res) => {
+    //     const table = req.query.table; // AccountType Currency Accounts TransactionsJournal TransactionsLedger
+    //     const selectType = req.query.selectType; // selectALL countALL
+    //     const limit = Number(req.query.limit ?? -1);
+    //     const sort = req.query.sort ?? "id";
+    //     const order  = req.query.order ?? "ASC";
+    //     const where = buildWhereClause(req.query);
+        
+    //     let sql = "";
+    //     if ( selectType === "selectALL" ) {
+    //         sql += "SELECT * "
+    //     }
+    //     else if ( selectType === "countALL" ) {
+    //         sql += "SELECT COUNT(*) "
+    //     }
+    //     else {
+    //         return res.status(400).json({ "status": "error", "message": "unsupported selectType" });
+    //     }
+
+    //     if ( Array.isArray(table) ) {
+
+    //     }
+
+    //     if ( limit >= 0 ) {
+    //         try {
+    //             const sql = `SELECT * FROM ${table} ${where} ORDER BY ${sort} LIMIT ?`;
+    //             const rows = db.prepare(sql).all(limit);
+    //         }
+    //         catch (sqlite_error) {
+    //             console.error( "SQLite SELECT error:", sqlite_error.message );
+    //             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
+    //         }
+    //     }
+    //     else {
+    //         try {
+    //             const sql = `SELECT * FROM ${table} ${where} ORDER BY ${sort}`;
+    //             const rows = db.prepare(sql).all();
+    //         }
+    //         catch (sqlite_error) {
+    //             console.error( "SQLite SELECT error:", sqlite_error.message );
+    //             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
+    //         }
+    //     }
+    //     // const rows = db.prepare(sql).all(...params, limit);
+    //     return res.json(rows);
+    // });
+
+    router.get('/v1/graph', async (req, res) => {
+        const graphNO = parseInt(req.query.graphNO);
+        console.log(graphNO);
+
+        let stmt;
+        let result;
+        try {
+            switch (graphNO) {
+                case 1: // line chart for display trend year-till-date
+                    console.log( "running 1" )
+                    stmt = db.prepare(`SELECT 
+                            account_type,
+                            strftime('%Y-%m', date_of_transaction) AS date, 
+                            SUM( CASE WHEN TL.is_credit = 0 THEN amount ELSE 0 END ) - SUM( CASE WHEN TL.is_credit = 1 THEN amount ELSE 0 END ) AS "total_amount"
+                        FROM TransactionsLedger AS TL LEFT JOIN Accounts AS ACCS
+                        WHERE TL.account_id = ACCS.id
+                            AND date_of_transaction >= DATE('now', 'start of year', 'start of month') AND date_of_transaction <= DATE('now')
+                        GROUP BY account_type, date
+                        ORDER BY date ASC;
+                            `);
+                    result = stmt.all();
+                    break;
+
+                case 2: // previous 3 month account total amount of expense
+                    console.log( "running 2" )
+                    stmt = db.prepare(`SELECT ACCS.name AS account, 
+                                    SUM( CASE WHEN TL.is_credit = 0 THEN amount ELSE 0 END ) - SUM(CASE WHEN TL.is_credit = 1 THEN amount ELSE 0 END) AS "total_amount"
+                                    FROM TransactionsLedger AS TL LEFT JOIN Accounts AS ACCS
+                                    WHERE TL.account_id = ACCS.id
+                                        AND TL.date_of_transaction >= DATE('now', '-3 months', 'start of month')
+                                        AND TL.date_of_transaction <= DATE('now')
+                                        AND ACCS.account_type = 2
+                                    GROUP BY account;
+                                        `);
+                    result = stmt.all();
+                    break;
+
+                case 3: // year-till-date expense amount monthly
+                    console.log( "running 3" )
+                    stmt = db.prepare(`SELECT 
+                            strftime('%Y-%m', date_of_transaction) AS date, 
+                            SUM( CASE WHEN TL.is_credit = 0 THEN amount ELSE 0 END ) - SUM( CASE WHEN TL.is_credit = 1 THEN amount ELSE 0 END ) AS "total_amount"
+                        FROM TransactionsLedger AS TL LEFT JOIN Accounts AS ACCS
+                        WHERE TL.account_id = ACCS.id
+                            AND date_of_transaction >= DATE('now', 'start of year', 'start of month') AND date_of_transaction <= DATE('now')
+                            AND account_type = 2
+                        GROUP BY date
+                        ORDER BY date ASC;
+                            `);
+                    result = stmt.all();
+                    break;
+
+                case 4:
+                    console.log( "running 4" )
+                    stmt = db.prepare(`SELECT COUNT(*) AS count, strftime('%Y-%m', created_at) AS date 
+                        FROM TransactionsJournal 
+                        WHERE created_at >= DATE('now', '-2 months', 'start of month')
+                            AND created_at <= DATE('now')
+                        GROUP BY date
+                        ORDER BY date ASC;
+                            `);
+                    result = stmt.all();
+                    break;
+
+                default:
+                    console.log( "running default" )
+                    result = { "error": "bug here" };
+                    break;
+            }
+        }
+        catch (sqlite_error) {
+            console.error( "SQLite SELECT error:", sqlite_error.message );
+            return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
+        }
+        
+        // const rows = db.prepare(sql).all(...params, limit);
+        return res.json(result);
     });
 
     // --------------------------------------------------
@@ -389,6 +566,26 @@ export default function createRouter(db, __dirname) {
         return res.json({ "status": "okay", message: "Account Balance added successfully" });
     }); // end post(v1/accountbalance)
 
+    router.post('/v1/accountbalance/calculate', logger, async (req, res) => {
+        const targetId = req.body.id ?? 0;
+        let result;
+        try {
+            const checkExist = db.prepare(`SELECT count(*) FROM AccountBalance WHERE id = ?`).get( targetId );
+            if ( checkExist ) {
+                const stmt = db.prepare(`INSERT INTO AccountBalance VALUES (?, ?)`);
+                result = stmt.run(req.body.id, req.body.description);
+            }
+            else {
+                return res.json( { "status": "Not Found" } ) 
+            }
+        }
+        catch (sqlite_error) {
+            console.error( "SQLite INSERT error:", sqlite_error.message );
+            return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
+        }
+        return res.json({ "status": "okay", message: "Account Balance added successfully" });
+    }); // end post(v1/accountbalance)
+
     // ##################################################
     // API Endpoints for Dynamic Query Display
     // beta stage
@@ -407,22 +604,31 @@ export default function createRouter(db, __dirname) {
             return res.status(400).json({ error: 'Invalid or missing table name' });
         }
 
+        let rows;
+        let columns;
         try {
-            const stmt = db.prepare(`SELECT * FROM ${table}`);
-            const rows = stmt.all();
+            // const stmt = db.prepare(`SELECT * FROM ${table}`);
+            let stmt;
+            if ( table == "TransactionsLedger" ) {
+                stmt = db.prepare(`SELECT TL.id, TL.transaction_id, TL.date_of_transaction, account_id, ACCS.name, TL.amount, is_credit, TL.currency, TL.is_foreign, TL.exchange_rate 
+                    FROM ${table} AS TL LEFT JOIN Accounts AS ACCS WHERE TL.account_id = ACCS.id `);
+            }
+            else {
+                stmt = db.prepare(`SELECT * FROM ${table}`);
+            }
+            rows = stmt.all();
             
             // Get column names from result or pragma
-            let columns = [];
+            columns = [];
             if (rows.length > 0) {
                 columns = Object.keys(rows[0]);
             } else {
                 columns = getColumnsFromPragma(db, table);
             }
-
-            res.json({ columns, rows });
         } catch (err) {
-            res.status(500).json({ error: err.message });
+            return res.status(500).json({ error: err.message });
         }
+        return res.json({ columns, rows });
     }); // end get(/v1/query)
 
     return router
