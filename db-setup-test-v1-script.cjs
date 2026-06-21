@@ -108,13 +108,23 @@ const tableAccounts = db.prepare( `CREATE TABLE IF NOT EXISTS Accounts (
     );` );
 
 // transaction
+// v2
 const tableTransactionJournal = db.prepare( `CREATE TABLE IF NOT EXISTS TransactionsJournal (
     id INTEGER PRIMARY KEY, 
     description TEXT, 
     created_at DATE NOT NULL, 
-    metadata TEXT, 
+    metadata TEXT CHECK(json_valid(metadata)), 
     is_deleted BOOLEAN NOT NULL DEFAULT 0
     );` ); 
+
+// // v1
+// const tableTransactionJournal = db.prepare( `CREATE TABLE IF NOT EXISTS TransactionsJournal (
+//     id INTEGER PRIMARY KEY, 
+//     description TEXT, 
+//     created_at DATE NOT NULL, 
+//     metadata TEXT, 
+//     is_deleted BOOLEAN NOT NULL DEFAULT 0
+//     );` ); 
 
 const tableTransactionLedger = db.prepare( `CREATE TABLE IF NOT EXISTS TransactionsLedger (
     id INTEGER PRIMARY KEY, 
