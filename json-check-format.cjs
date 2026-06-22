@@ -82,7 +82,7 @@ stream.on('end', () => {
     if (outputFile) {
         const absoluteOutputPath = path.isAbsolute(outputFile)
         ? outputFile
-        : path.join(__dirname, outputFile);
+        : path.join(__dirname, "..", "databases", outputFile);
 
         fs.writeFileSync(absoluteOutputPath, JSON.stringify(parsedJsonRows, null, 2));
         console.log(`Exported JSON data to ${absoluteOutputPath}`);

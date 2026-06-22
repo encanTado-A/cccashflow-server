@@ -189,10 +189,10 @@ const rowMapperAccount = (row) => ({
     "created_at": row.created_at,
 });
 
-const rowMapperTransactionsJournal = (row) => ({
+const rowMapperTransactionsJournal = (row) => ({   
     "id": row.id,
     "description": row.description,
-    "metadata": row.metadata,
+    "metadata": row.metadata ? row.metadata : null,
     "created_at": row.created_at,
     "is_deleted": row.is_deleted
 });
