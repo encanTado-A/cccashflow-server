@@ -170,6 +170,7 @@ export default function createRouter(db, __dirname) {
                         WHERE TL.account_id = ACCS.id
                             AND date_of_transaction >= DATE('now', 'start of year', 'start of month') AND date_of_transaction <= DATE('now')
                         GROUP BY account_type, date
+                        HAVING account_type IN (2, 5)
                         ORDER BY date ASC;
                             `);
                     result = stmt.all();
@@ -204,7 +205,7 @@ export default function createRouter(db, __dirname) {
                     result = stmt.all();
                     break;
 
-                case 4:
+                case 4: // previous 3 month transaction count
                     console.log( "running 4" )
                     stmt = db.prepare(`SELECT COUNT(*) AS count, strftime('%Y-%m', created_at) AS date 
                         FROM TransactionsJournal 

@@ -28,7 +28,7 @@ export default function createRouter(db, __dirname) {
     // }); // end get(/tables/:table_name)
 
     router.get('/dashboard', logger, async (req, res) => {
-        res.status(200).render("dashboard", { title: 'Dashboard' });
+        res.status(200).render("dashboard", { title: 'Dashboard', username: 'Andrew'});
     }); // end get(/)
 
     router.get('/currency', logger, async (req, res) => {
