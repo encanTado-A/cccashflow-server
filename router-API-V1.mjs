@@ -331,6 +331,8 @@ export default function createRouter(db, __dirname) {
     router.get('/v1/accounts', logger, async (req, res) => {
         const displayLimit = req.query.limit ?? 0;
         const target = req.query.targetCurrency ?? 0;
+        const interactableOnly = req.query.interactableOnly ?? 0;
+
         let result;
         try {
             if ( displayLimit ) {
@@ -341,6 +343,10 @@ export default function createRouter(db, __dirname) {
                 const stmt = db.prepare(`SELECT * FROM Accounts WHERE id = ?`);
                 result = stmt.all( target );
             }
+            else if ( interactableOnly ) {
+                const stmt = db.prepare(`SELECT ACCS.id, ACCS.name, AT.description, ACCS.currency FROM Accounts AS ACCS LEFT JOIN AccountType AS AT ON ACCS.account_type = AT.id`);
+                result = stmt.all(  );
+            }
             else {
                 const stmt = db.prepare(`SELECT * FROM Accounts`);
                 result = stmt.all();    
@@ -350,8 +356,36 @@ export default function createRouter(db, __dirname) {
             console.error( "SQLite SELECT error:", sqlite_error.message );
             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
         }
-        return res.json({ "status": "okay", "result": result});
+        return res.json( result );
     }); // end get(v1/accounts)
+
+    router.get('/v1/accounts/test', logger, (req, res) => {
+        const interactableOnly = req.query.interactableOnly ?? 0;
+
+        // Validate table name against whitelist
+        if ( !interactableOnly ) {
+            return res.status(400).json({ error: 'use interactableOnly' });
+        }
+
+        let rows;
+        let columns;
+        try {
+            // const stmt = db.prepare(`SELECT * FROM ${table}`);
+            const stmt = db.prepare(`SELECT ACCS.id, ACCS.name, AT.description, ACCS.currency FROM Accounts AS ACCS LEFT JOIN AccountType AS AT ON ACCS.account_type = AT.id WHERE ACCS.id NOT IN (1, 2, 3, 4, 5, 9, 15, 17, 33)`);
+            rows = stmt.all();
+            
+            // Get column names from result or pragma
+            columns = [];
+            if (rows.length > 0) {
+                columns = Object.keys(rows[0]);
+            } else {
+                columns = getColumnsFromPragma(db, table);
+            }
+        } catch (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        return res.json({ columns, rows });
+    }); // end get(/v1/accounts/test)
 
     router.post('/v1/accounts', logger, async (req, res) => {
         let result;
