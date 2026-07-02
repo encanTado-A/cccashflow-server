@@ -18,7 +18,8 @@ const args = process.argv || 0;
 const isHelp = args.includes('--help') || args.includes('-h');
 if (isHelp) {
     console.log( `--all / -a \t\t : program will create all the target table with given definition` );
-    console.log( `--view / -v \t\t : program will NOT run any creation` )
+    console.log( `--view / -l \t\t : program will NOT run any creation` );
+    console.log( `--verbose / -v \t\t : program database will verbose` );
     console.log( `-TC \t\t\t : create for table Currency` );
     console.log( `-TAT \t\t\t : create for table AccountType` );
     console.log( `-TA \t\t\t : create for table Accounts` );
@@ -35,6 +36,7 @@ if ( flag_view_only ) {
     console.log("no table creation would be made");
 }
 
+const isVerbose = ( args.includes('-verbose') || args.includes('-v') ) ?? 0;
 const isCreateCurrency = args.includes('-TC') ?? 0;
 const isCreateAccountType = args.includes('-TAT') ?? 0;
 const isCreateAccounts = args.includes('-TA') ?? 0;
@@ -76,7 +78,12 @@ if ( flag_view_only ) {
 
 let db = null;
 try {
-    db = new Database(db_file_path, { verbose: console.log });
+    if ( isVerbose ) {
+        db = new Database(db_file_path, { verbose: console.log });
+    }
+    else {
+        db = new Database(db_file_path);
+    }
     if ( db && db.open) {
         console.log('db open');
     }

@@ -47,7 +47,8 @@ const args = process.argv || 0;
 const isHelp = args.includes('--help') || args.includes('-h');
 if (isHelp) {
     console.log( `--all / -a \t\t : program will insert all the record found in the csv` );
-    console.log( `--view / -v \t\t : program will NOT run any insertion from the csv` )
+    console.log( `--view / -l \t\t : program will NOT run any creation` );
+    console.log( `--verbose / -v \t\t : program database will verbose` );
     console.log( `-TC \t\t\t : insert for table Currency` );
     console.log( `-TAT \t\t\t : insert for table AccountType` );
     console.log( `-TA \t\t\t : insert for table Accounts` );
@@ -64,6 +65,7 @@ if ( flag_view_only ) {
     console.log("no insertion would be made");
 }
 
+const isVerbose = ( args.includes('-verbose') || args.includes('-v') ) ?? 0;
 const isInsertCurrency = args.includes('-TC') ?? 0;
 const isInsertAccountType = args.includes('-TAT') ?? 0;
 const isInsertAccounts = args.includes('-TA') ?? 0;
@@ -119,8 +121,12 @@ if ( flag_view_only ) {
 
 let db = null;
 try {
-    // db = new Database(db_file_path, { verbose: console.log });
-    db = new Database(db_file_path);
+    if ( isVerbose ) {
+        db = new Database(db_file_path, { verbose: console.log });
+    }
+    else {
+        db = new Database(db_file_path);
+    }
     if ( db && db.open) {
         console.log('db open');
     }
