@@ -47,13 +47,13 @@ export default function createRouter(db, __dirname) {
         const target_description = req.body.description;
         const target_date = req.body.date;
         const target_metadata = req.body.metadata;
-        const target_is_deleted = req.body.is_deleted;
+        const target_is_deleted = req.body.is_deleted ?? 0;
         const target_account_id_from = req.body.account_id_from;
         const target_account_id_to = req.body.account_id_to;
         const target_currency_id = req.body.currency_id || "HKD"; // default HKD
         const target_is_foreign = req.body.is_foreign || 0; // default 0
-        const target_foreign_amount = req.body.foreign_amount || "";
-        const target_exchange_rate = req.body.exchange_rate || "";
+        const target_foreign_amount = req.body.foreign_amount || null;
+        const target_exchange_rate = req.body.exchange_rate || null;
 
         // --------------------------------------------------
         // checking stage
@@ -80,7 +80,7 @@ export default function createRouter(db, __dirname) {
         const stmt_check_account = db.prepare('SELECT COUNT(*) AS count FROM Accounts WHERE id = ?');
         const result_check_account_from = stmt_check_account.get(target_account_id_from);
         const result_check_account_to = stmt_check_account.get(target_account_id_to);
-        if ( ! result_check_account_from && ! result_check_account_to) {
+        if ( ! result_check_account_from || ! result_check_account_to) {
             return res.status(422).json({
                 status: "failed",
                 message: "Invalid account IDs provided"
@@ -88,13 +88,13 @@ export default function createRouter(db, __dirname) {
         }
 
         // 2. if amount is invalid (not a number or negative), then return error
-        const target_amount = req.body.amount;
-        if (isNaN(target_amount) || target_amount < 0) {
+        if (isNaN(req.body.amount) || req.body.amount < 0) {
             return res.status(422).json({
                 status: "failed",
                 message: "Invalid amount provided"
             });
         }
+        const target_amount = parseInt(req.body.amount, 10);
 
         // 3. if date is invalid
         const check_target_date = new Date(target_date);
