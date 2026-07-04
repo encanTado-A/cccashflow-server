@@ -38,29 +38,59 @@ export default function createRouter(db, __dirname) {
     // transaction related
     
     router.get('/transaction', logger, async (req, res) => {
-        return res.render('transaction', { title: 'Add Transaction' });
+        return res.render('form-transaction', { title: 'Add Transaction' });
     }); // end get(/transaction)
 
     router.post('/transaction', logger, async (req, res) => {
         const data = req.body;
         console.log("info: Request Body: " + JSON.stringify(req.body, null, 2));
-        const target_description = req.body.description;
+        const target_description = req.body.description ?? null;
         const target_date = req.body.date;
-        const target_metadata = req.body.metadata;
-        const target_is_deleted = req.body.is_deleted ?? 0;
         const target_account_id_from = req.body.account_id_from;
         const target_account_id_to = req.body.account_id_to;
-        const target_currency_id = req.body.currency_id || "HKD"; // default HKD
-        const target_is_foreign = req.body.is_foreign || 0; // default 0
-        const target_foreign_amount = req.body.foreign_amount || null;
-        const target_exchange_rate = req.body.exchange_rate || null;
+        const target_currency_id = req.body.currency_id ?? "HKD"; // default HKD
+        const target_is_deleted = 0;
+        let req_metadata = req.body.metadata ?? null;
+        
+        const rm_metadata = (obj) => {
+            if (typeof obj !== 'object' || obj === null) return obj;
+                let newObj = {};
+                Object.keys(obj).forEach((key) => {
+                    console.log(`im here for the key ${key} with ${obj[key]}`);
+                    const value = obj[key];
+                    
+                    // Check if the value is an empty object
+                    const isEmptyObject = value && typeof value === 'object' && Object.keys(value).length === 0;
+                    
+                    // Keep the value if it is not null, not undefined, and not an empty object
+                    if ( value !== undefined && value !== null && !isEmptyObject && value !== "" ) {
+                        console.log(`im here for the key ${key} with ${obj[key]}`);
+                        if ( value === "1" ) {
+                            newObj[key] = true;
+                        }
+                        else if ( value === "0" ) {
+                            newObj[key] = false;
+                        }
+                        else {
+                            newObj[key] = value;
+                        }
+                    }
+                });
+            return newObj;
+        };
+        
+        const target_metadata = JSON.stringify(rm_metadata(req_metadata));
+        console.log(target_metadata);
+        const target_is_foreign = target_metadata.is_foreign ?? 0; // req.body.is_foreign || 0; // default 0
+        const target_foreign_amount = target_metadata.foreign_amount ?? null; // req.body.foreign_amount || null;
+        const target_exchange_rate = target_metadata.exchange_rate ?? null; // req.body.exchange_rate || null;
 
         // --------------------------------------------------
         // checking stage
         
         // // 1. if target_account_id_from or target_account_id_to not exist in Account table, then return error
         // // a check both at the same time
-        // const stmt_check_account = db.prepare('SELECT COUNT(DISTINCT id) AS count FROM Accounts WHERE id IN(?, ?)');
+        // // const stmt_check_account = db.prepare('SELECT COUNT(DISTINCT id) AS count FROM Accounts WHERE id IN(?, ?)');
         // // const stmt_check_account = db.prepare('SELECT COUNT(DISTINCT id) AS both_exist FROM Accounts WHERE id IN(?, ?)');
 
         // const result_check_account = stmt_check_account.get(target_account_id_from, target_account_id_to);
@@ -70,11 +100,12 @@ export default function createRouter(db, __dirname) {
         //         message: "Invalid account IDs provided"
         //     });
         // }
+
         // b check one by one
         if ( !(target_account_id_from || target_account_id_to)) {
             return res.status(422).json({
-                status: "failed",
-                message: "Invalid account IDs provided"
+                "status": "failed",
+                "message": "Invalid account IDs provided"
             });
         }
         const stmt_check_account = db.prepare('SELECT COUNT(*) AS count FROM Accounts WHERE id = ?');
@@ -82,16 +113,16 @@ export default function createRouter(db, __dirname) {
         const result_check_account_to = stmt_check_account.get(target_account_id_to);
         if ( ! result_check_account_from || ! result_check_account_to) {
             return res.status(422).json({
-                status: "failed",
-                message: "Invalid account IDs provided"
+                "status": "failed",
+                "message": "Invalid account IDs provided"
             });
         }
 
         // 2. if amount is invalid (not a number or negative), then return error
         if (isNaN(req.body.amount) || req.body.amount < 0) {
             return res.status(422).json({
-                status: "failed",
-                message: "Invalid amount provided"
+                "status": "failed",
+                "message": "Invalid amount provided"
             });
         }
         const target_amount = parseInt(req.body.amount, 10);
@@ -100,8 +131,8 @@ export default function createRouter(db, __dirname) {
         const check_target_date = new Date(target_date);
         if (isNaN(check_target_date.getTime())) {
             return res.status(422).json({
-                status: "failed",
-                message: "Invalid date provided"
+                "status": "failed",
+                "message": "Invalid date provided"
             });
         }
         
@@ -117,8 +148,6 @@ export default function createRouter(db, __dirname) {
         const insertTransaction = db.transaction( (transactionData, ledgerData) => {
             // 1. insert into transaction journal
             let info1 = stmt1.run({
-                from_account_id: transactionData.from_account_id,
-                to_account_id: transactionData.to_account_id,
                 description: transactionData.description,
                 created_at: transactionData.created_at,
                 metadata: transactionData.metadata,
@@ -190,13 +219,16 @@ export default function createRouter(db, __dirname) {
                 throw new Error(`Error: Failed to insert transaction Ledger record with these 2 account description: from ${target_account_id_from}  to ${target_account_id_to} with item description: ${target_description}. Check Sum.`);
             }
 
-            return {info1 , info2, info3};
+            // console.log( `info1: ${info1}\ninfo2: ${info2}\ninfo3: ${info3}\n`)
+            // console.log( `info1: ${JSON.stringify(info1)}\ninfo2: ${JSON.stringify(info2)}\ninfo3: ${JSON.stringify(info3)}\n`)
+            return [info1 , info2, info3];
+            // return [JSON.stringify(info1) , JSON.stringify(info2), JSON.stringify(info3)];
         }); // end insertTransaction
             
         // insert action
         let info = null;
         try {
-            let info = insertTransaction({
+            info = insertTransaction({
                 description: target_description, 
                 from_account_id: target_account_id_from,
                 to_account_id: target_account_id_to,
@@ -214,77 +246,28 @@ export default function createRouter(db, __dirname) {
                 exchange_rate: target_exchange_rate
             });
         }
-        catch (SqliteError) {
+        catch (error) {
             return res.status(422).json({ 
-                status: "failed", 
-                message: `insertion failed`, 
-                details: `SQLite Error: ${SqliteError.message}`,
-                sqlaction: `ROLLBACK`, 
+                "status": "failed", 
+                "message": `insertion failed`, 
+                "details": `SQLite ${error}`,
+                "sqlaction": `ROLLBACK`, 
             });
         }
 
-
-        // if ( ! info || info.changes != 1 ) {
-        //     return res.status(422).json({ 
-        //         status: "failed", 
-        //         message: `transaction record not accept`, 
-        //     });
-        // }
-        
-        if (info && info.info1 && info.info1.lastInsertRowid) {
-            console.log(`info: ${JSON.stringify(info)}`)
-            // console.log(`Transaction inserted successfully with transaction_id: ${info[0].lastInsertRowid}`);
+        if ( ! info || info[0].changes != 1 ) {
+            return res.status(422).json({ 
+                "status": "failed", 
+                "message": `transaction record has not added`, 
+            });
         }
-        // const transaction_id = info[0].lastInsertRowid;
+        else {
+            console.log(`info: ${JSON.stringify(info)}`);
+            console.log(`Transaction inserted successfully with transaction_id: ${info[0].lastInsertRowid}`);
+        }
+
         return res.redirect('/add/transaction')
-
     }); // end post(/transaction)
-
-
-    router.get('/v1/transaction', logger, async (req, res) => {
-        return res.render('basic-transaction', { title: 'Add Transaction' });
-    }); // end get(/v1/transaction)
-    
-    router.post('/v1/transaction', logger, async (req, res) => {
-        const data = req.body;
-        console.log("info: Request Body: " + JSON.stringify(req.body, null, 2));
-    
-        const target_description = req.body.description;
-        const target_created_at = req.body.created_at;
-        const target_metadata = req.body.metadata;
-        const target_is_deleted = req.body.is_deleted;
-    
-        // --- INSERT INTO transactionJournal (id, description) VALUE (@id, @description) ---
-        const stmt = db.prepare('INSERT INTO transactionJournal (id, description, created_at, metadata, is_deleted) VALUES (@description, @created_at, @metadata, @is_deleted)');
-        let info = null;
-        try {
-            info = stmt.run({
-                description: target_description, 
-                created_at: target_created_at, 
-                metadata: target_metadata, 
-                is_deleted: target_is_deleted
-            });
-        }
-        catch (SqliteError) {
-            return res.status(422).json({ 
-                status: "failed", 
-                message: `data received but invalid currency!  currency: ${target_id}  description: ${target_description}`, 
-                details: `SQLite Error: ${SqliteError.message}`
-            });
-        }
-    
-        if ( info && info.changes != 1 ) {
-            return res.status(422).json({ 
-                status: "failed", 
-                message: `data received but invalid currency!  currency: ${target_id}  description: ${target_description}` 
-            });
-        }
-        
-        return res.status(200).json({ 
-            status: "success", 
-            message: `data well received!  new currency: ${target_id}  description: ${target_description}` 
-        });
-    }); // end post(/v1/transaction)
     
     router.get('/demo/transaction', logger, async (req, res) => {
         return res.sendFile(path.join(__dirname, 'public', 'input-form.html'));
@@ -296,51 +279,152 @@ export default function createRouter(db, __dirname) {
         console.log("Request Body: " + JSON.stringify(req.body, null, 2));
         
         return res.status(200).json({ 
-            status: "success", 
-            message: `data well received!` 
+            "status": "success", 
+            "message": `data well received!` 
         });
     }); // end post(/demo/transaction)
     
     // --------------------------------------------------
 
-    router.get('/currency', logger, async (req, res) => {
-        res.sendFile(path.join(__dirname, 'public', 'new-currency.html'));
-    }); // end get(/currency)
+    router.get('/account', logger, async (req, res) => {
+        res.render('form-account', { title: "account" });
+    }); // end get(/account)
     
-    router.post('/currency', logger, async (req, res) => {
+    router.post('/account', logger, async (req, res) => {
         const data = req.body;
-        const target_id = req.body.id;
+        console.log("Request Body: " + JSON.stringify(data, null, 2));
+
+        const target_name = req.body.name;
+        const target_account_type = req.body.account_type;
         const target_description = req.body.description;
+        const target_open_balance = req.body.opening_balance || 0;
+        const target_currency = req.body.currency || "HKD";
+        const target_parent_id = req.body.parent_id;
+        const target_created_at = new Date().toISOString().split('T')[0]; // new Date().toLocaleDateString();
+
+        const target = {
+            name: target_name, 
+            account_type: target_account_type, 
+            description: target_description,
+            opening_balance: target_open_balance, 
+            currency: target_currency, 
+            parent_id: target_parent_id, 
+            created_at: target_created_at
+        };
+        console.log(JSON.stringify(target, null, 2));
     
-        console.log("Request Body: " + JSON.stringify(req.body, null, 2));
-        console.log(`parsed id: ${target_id}, parsed description: ${target_description}`);
-    
-        // --- INSERT INTO Currency (id, description) VALUE (@id, @description) ---
-        const stmt = db.prepare('INSERT INTO Currency (id, description) VALUES (@id, @description)');
+        const stmt = db.prepare('INSERT INTO Accounts (name, account_type, description, opening_balance, currency, parent_id, created_at) VALUES (@name, @account_type, @description, @opening_balance, @currency, @parent_id, @created_at)');
         let info = null;
         try {
-            info = stmt.run({id: target_id, description: target_description});
+            info = stmt.run(target);
         }
         catch (SqliteError) {
             return res.status(422).json({ 
-                status: "failed", 
-                message: `data received but invalid currency!  currency: ${target_id}  description: ${target_description}`, 
-                details: `SQLite Error: ${SqliteError.message}`
+                "status": "failed", 
+                "message": `invalid information!  name: ${target_name}  description: ${target_description}`, 
+                "details": `SQLite ${SqliteError}`
             });
         }
     
         if ( info && info.changes != 1 ) {
             return res.status(422).json({ 
-                status: "failed", 
-                message: `data received but invalid currency!  currency: ${target_id}  description: ${target_description}` 
+                "status": "failed", 
+                "message": `data received but invalid currency!  currency: ${target_name}  description: ${target_description}` 
             });
         }
         
-        // Send a JSON response back to the frontend
         return res.status(200).json({ 
-            status: "success", 
-            message: `data well received!  new currency: ${target_id}  description: ${target_description}` 
+            "status": "success", 
+            "message": `data well received!  new account: ${target_name}  description: ${target_description}` 
         });
+    }); // end post(/account)
+
+    // --------------------------------------------------
+
+    router.get('/currency', logger, async (req, res) => {
+        res.render(`form-currency`, { title: "currency form" } );
+    }); // end get(/currency)
+    
+    router.post('/currency', logger, async (req, res) => {
+        const data = req.body;
+        console.log("Request Body: " + JSON.stringify(req.body, null, 2));
+
+        const target_id = req.body.id;
+        const target_description = req.body.description;
+    
+ 
+        // checking 
+        // exist check
+        const check_stmt = db.prepare('SELECT id FROM Currency WHERE id = ?').all(target_id);
+        if ( check_stmt.length ) {
+            return res.status(422).json({ 
+                "status": "failed", 
+                "message": `currency already exist!\ncurrency: ${target_id}\ndescription: ${target_description}`
+            });
+        }
+
+        // validcy check
+        const sample_ISO_code_5 = [
+            {
+                "code": "ARS", 
+                "currency": "Argentine Peso",
+                "region": "Argentina"
+            },
+            {
+                "code": "CAD",
+                "currency": "Canadian Dollar",
+                "region": "Canada"
+            },
+            {
+                "code": "IDR",
+                "currency": "Rupiah",
+                "region": "Indonesia"
+            },
+            {
+                "code": "INR",
+                "currency": "Indian Rupee",
+                "region": "India"
+            },
+            {
+                "code": "KRW",
+                "currency": "South Korean Won",
+                "region": "South Korea"
+            }
+        ];
+        if ( !sample_ISO_code_5.some( obj => obj.code === target_id ) ) { // !sample_ISO_code_5.includes(target_id) only check value
+            return res.status(422).json({ 
+                "status": "failed", 
+                "message": `unsupported currency.\ncurrency: ${target_id}\ndescription: ${target_description}`
+            });
+        }
+
+        // insertion
+        const stmt = db.prepare('INSERT INTO Currency (id, description) VALUES (@id, @description)');
+        let info = null;
+        try {
+            info = stmt.run( { id: target_id, description: target_description } );
+        }
+        catch (SqliteError) {
+            return res.status(422).json({ 
+                "status": "failed", 
+                "message": `data received but invalid currency!\ncurrency: ${target_id}\ndescription: ${target_description}`, 
+                "details": `SQLite ${SqliteError}`
+            });
+        }
+    
+        if ( info && info.changes != 1 ) {
+            return res.status(422).json({ 
+                "status": "failed", 
+                "message": `data received but invalid currency!\ncurrency: ${target_id}\ndescription: ${target_description}` 
+            });
+        }
+
+        return res.status(200).json({ 
+            "status": "success", 
+            "message": `data well received!  new currency:\n ${target_id}\n description: ${target_description}`,
+            "Content-Type": `application/json`
+        });
+        // return res.status(200).send(`/add/currency?message: data well received!  new currency: ${target_id}  description: ${target_description}`);
     }); // end post(/currency)
     
     return router;
