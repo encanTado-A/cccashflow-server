@@ -198,9 +198,9 @@ const rowMapperAccount = (row) => ({
 const rowMapperTransactionsJournal = (row) => ({   
     "id": row.id,
     "description": row.description,
-    "metadata": row.metadata ? row.metadata : null,
+    "metadata": row.metadata ? row.metadata : {},
     "created_at": row.created_at,
-    "is_deleted": row.is_deleted
+    "is_deleted": row.is_deleted ?? 0
 });
 
 const rowMapperTransactionsLedger = (row) => ({
@@ -211,15 +211,15 @@ const rowMapperTransactionsLedger = (row) => ({
     "amount": row.amount,
     "currency": row.currency,
     "is_credit": row.is_credit,
-    "is_foreign": row.is_foreign,
-    "exchange_rate": row.exchange_rate
+    "is_foreign": row.is_foreign ?? 0,
+    "exchange_rate": row.exchange_rate ?? null
 });
 
 const rowMapperAccountBalance = (row) => ({
     "id": row.id,
     "account_id": row.account_id,
-    "balance": row.balance,
-    "currency": row.currency,
+    "balance": row.balance ?? 0,
+    "currency": row.currency ?? 'HKD',
     "updated_at": row.updated_at
 });
 
