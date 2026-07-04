@@ -1,4 +1,4 @@
-// officical
+// external
 import express from 'express';
 
 // local js
@@ -8,6 +8,7 @@ import logger from './logger.mjs';
 // '/': get
 // '/transaction': get, post
 // '/currency': get, post
+
 export default function createRouter(db, __dirname) {
     const router = express.Router();
 
@@ -41,6 +42,84 @@ export default function createRouter(db, __dirname) {
         return res.render('form-transaction', { title: 'Add Transaction' });
     }); // end get(/transaction)
 
+    // ready function for open transaction in TransactionJournal and TransactionLedger
+    const insertTransaction = db.transaction( (stmt1, stmt2, transactionData, ledgerData) => {
+        // 1. insert into transaction journal
+        let info1 = stmt1.run({
+            description: transactionData.description,
+            created_at: transactionData.created_at,
+            metadata: transactionData.metadata,
+            is_deleted: 0
+        }); 
+
+        if ( ! info1 || info1.changes != 1) {
+            throw new Error(`Failed to insert transaction journal record for this item description: ${transactionData.description}`);
+        }
+        
+        console.log(`info1: ${JSON.stringify(info1)}`)
+        const transaction_id = info1.lastInsertRowid;
+        
+        if ( ! transaction_id || transaction_id <= 0 ) {
+            throw new Error(`Failed to retrieve transaction_id after inserting transaction journal record for this item description: ${transactionData.description}`);
+        }
+
+        // insert into transaction ledger
+        let info2 = stmt2.run({
+            transaction_id: transaction_id,
+            date_of_transaction: ledgerData.date_of_transaction,
+            account_id: ledgerData.from_account_id,
+            amount: ledgerData.amount,
+            is_credit: 1,
+            currency: ledgerData.currency,
+            is_foreign: ledgerData.is_foreign,
+            foreign_amount: ledgerData.foreign_amount,
+            exchange_rate: ledgerData.exchange_rate
+        }); 
+        if ( ! info2 || info2.changes != 1) {
+            throw new Error(`Failed to insert transaction Ledger record with these 2 account description: from ${ledgerData.account_id}  to ${ledgerData.account_id} with item description: ${ledgerData.description}`);
+        }
+
+        let info3 = stmt2.run({
+            transaction_id: transaction_id,
+            date_of_transaction: ledgerData.date_of_transaction,
+            account_id: ledgerData.to_account_id,
+            amount: ledgerData.amount,
+            is_credit: 0,
+            currency: ledgerData.currency,
+            is_foreign: ledgerData.is_foreign,
+            foreign_amount: ledgerData.foreign_amount,
+            exchange_rate: ledgerData.exchange_rate
+        });
+
+        // post transaction checking
+        // -> is the amount is 0 at the end?
+
+        if ( ! info3 && ! info3.changes == 1) {
+            throw new Error(`Failed to insert transaction Ledger record with these 2 account description: from ${ledgerData.account_id}  to ${ledgerData.account_id} with item description: ${ledgerData.description}`);
+        }
+
+        // check sum
+        // MYSQL / MARIADB
+        // const check_stmt_result = db.prepare(`SELECT sum(IF is_credit, amount, 0) AS total_debit, 
+        //                             sum(IF NOT(is_credit), amount, 0) AS total_credit 
+        //                             FROM transactionsJournal`).run();
+        // sqlite
+        const check_stmt_result = db.prepare(`SELECT sum(CASE WHEN is_credit THEN 0 ELSE amount END) AS total_debit, 
+                                    sum(CASE WHEN is_credit THEN amount ELSE 0 END) AS total_credit 
+                                    FROM transactionsLedger`).get();
+        console.log(JSON.stringify(check_stmt_result, null, 2));
+        if ( check_stmt_result.total_debit - check_stmt_result.total_credit != 0 ) {
+            // return res.status(500).json({ 
+            //     status: "failed", 
+            //     message: `transaction record not accept`, 
+            //     detail: `internal error` 
+            // });
+            throw new Error(`Error: Failed to insert transaction Ledger record with these 2 account description: from ${target_account_id_from}  to ${target_account_id_to} with item description: ${target_description}. Check Sum.`);
+        }
+
+        return [info1 , info2, info3];
+    }); // end insertTransaction
+
     router.post('/transaction', logger, async (req, res) => {
         const data = req.body;
         console.log("info: Request Body: " + JSON.stringify(req.body, null, 2));
@@ -50,7 +129,7 @@ export default function createRouter(db, __dirname) {
         const target_account_id_to = req.body.account_id_to;
         const target_currency_id = req.body.currency_id ?? "HKD"; // default HKD
         const target_is_deleted = 0;
-        let req_metadata = req.body.metadata ?? null;
+        let req_metadata = req.body.metadata ?? {};
         
         const rm_metadata = (obj) => {
             if (typeof obj !== 'object' || obj === null) return obj;
@@ -143,92 +222,11 @@ export default function createRouter(db, __dirname) {
             (transaction_id , date_of_transaction, account_id, amount, is_credit, currency, is_foreign, exchange_rate) 
             VALUES 
             (@transaction_id , @date_of_transaction, @account_id, @amount, @is_credit, @currency, @is_foreign, @exchange_rate)`);
-
-        // ready function for open transaction in TransactionJournal and TransactionLedger
-        const insertTransaction = db.transaction( (transactionData, ledgerData) => {
-            // 1. insert into transaction journal
-            let info1 = stmt1.run({
-                description: transactionData.description,
-                created_at: transactionData.created_at,
-                metadata: transactionData.metadata,
-                is_deleted: 0
-            }); 
-
-            if ( ! info1 || info1.changes != 1) {
-                throw new Error(`Failed to insert transaction journal record for this item description: ${transactionData.description}`);
-            }
-            
-            console.log(`info1: ${JSON.stringify(info1)}`)
-            const transaction_id = info1.lastInsertRowid;
-            
-            if ( ! transaction_id || transaction_id <= 0 ) {
-                throw new Error(`Failed to retrieve transaction_id after inserting transaction journal record for this item description: ${transactionData.description}`);
-            }
-
-            // insert into transaction ledger
-            let info2 = stmt2.run({
-                transaction_id: transaction_id,
-                date_of_transaction: ledgerData.date_of_transaction,
-                account_id: ledgerData.from_account_id,
-                amount: ledgerData.amount,
-                is_credit: 1,
-                currency: ledgerData.currency,
-                is_foreign: ledgerData.is_foreign,
-                foreign_amount: ledgerData.foreign_amount,
-                exchange_rate: ledgerData.exchange_rate
-            }); 
-            if ( ! info2 || info2.changes != 1) {
-                throw new Error(`Failed to insert transaction Ledger record with these 2 account description: from ${ledgerData.account_id}  to ${ledgerData.account_id} with item description: ${ledgerData.description}`);
-            }
-
-            let info3 = stmt2.run({
-                transaction_id: transaction_id,
-                date_of_transaction: ledgerData.date_of_transaction,
-                account_id: ledgerData.to_account_id,
-                amount: ledgerData.amount,
-                is_credit: 0,
-                currency: ledgerData.currency,
-                is_foreign: ledgerData.is_foreign,
-                foreign_amount: ledgerData.foreign_amount,
-                exchange_rate: ledgerData.exchange_rate
-            });
-
-            // post transaction checking
-            // -> is the amount is 0 at the end?
-
-            if ( ! info3 && ! info3.changes == 1) {
-                throw new Error(`Failed to insert transaction Ledger record with these 2 account description: from ${ledgerData.account_id}  to ${ledgerData.account_id} with item description: ${ledgerData.description}`);
-            }
-
-            // check sum
-            // MYSQL / MARIADB
-            // const check_stmt_result = db.prepare(`SELECT sum(IF is_credit, amount, 0) AS total_debit, 
-            //                             sum(IF NOT(is_credit), amount, 0) AS total_credit 
-            //                             FROM transactionsJournal`).run();
-            // sqlite
-            const check_stmt_result = db.prepare(`SELECT sum(CASE WHEN is_credit THEN 0 ELSE amount END) AS total_debit, 
-                                        sum(CASE WHEN is_credit THEN amount ELSE 0 END) AS total_credit 
-                                        FROM transactionsLedger`).get();
-            console.log(JSON.stringify(check_stmt_result, null, 2));
-            if ( check_stmt_result.total_debit - check_stmt_result.total_credit != 0 ) {
-                // return res.status(500).json({ 
-                //     status: "failed", 
-                //     message: `transaction record not accept`, 
-                //     detail: `internal error` 
-                // });
-                throw new Error(`Error: Failed to insert transaction Ledger record with these 2 account description: from ${target_account_id_from}  to ${target_account_id_to} with item description: ${target_description}. Check Sum.`);
-            }
-
-            // console.log( `info1: ${info1}\ninfo2: ${info2}\ninfo3: ${info3}\n`)
-            // console.log( `info1: ${JSON.stringify(info1)}\ninfo2: ${JSON.stringify(info2)}\ninfo3: ${JSON.stringify(info3)}\n`)
-            return [info1 , info2, info3];
-            // return [JSON.stringify(info1) , JSON.stringify(info2), JSON.stringify(info3)];
-        }); // end insertTransaction
             
         // insert action
         let info = null;
         try {
-            info = insertTransaction({
+            info = insertTransaction(stmt1, stmt2, {
                 description: target_description, 
                 from_account_id: target_account_id_from,
                 to_account_id: target_account_id_to,
@@ -266,7 +264,7 @@ export default function createRouter(db, __dirname) {
             console.log(`Transaction inserted successfully with transaction_id: ${info[0].lastInsertRowid}`);
         }
 
-        return res.redirect('/add/transaction')
+        return res.status(200).json( { "message": `Transaction inserted successfully with transaction_id: ${info[0].lastInsertRowid}` } );
     }); // end post(/transaction)
     
     router.get('/demo/transaction', logger, async (req, res) => {
@@ -351,8 +349,7 @@ export default function createRouter(db, __dirname) {
 
         const target_id = req.body.id;
         const target_description = req.body.description;
-    
- 
+
         // checking 
         // exist check
         const check_stmt = db.prepare('SELECT id FROM Currency WHERE id = ?').all(target_id);
@@ -424,7 +421,6 @@ export default function createRouter(db, __dirname) {
             "message": `data well received!  new currency:\n ${target_id}\n description: ${target_description}`,
             "Content-Type": `application/json`
         });
-        // return res.status(200).send(`/add/currency?message: data well received!  new currency: ${target_id}  description: ${target_description}`);
     }); // end post(/currency)
     
     return router;
