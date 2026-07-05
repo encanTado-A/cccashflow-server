@@ -162,58 +162,80 @@ export default function createRouter(db, __dirname) {
             switch (graphNO) {
                 case 1: // line chart for display trend year-till-date
                     console.log( "running 1" )
-                    stmt = db.prepare(`SELECT 
-                            account_type,
-                            strftime('%Y-%m', date_of_transaction) AS date, 
-                            SUM( CASE WHEN TL.is_credit = 0 THEN amount ELSE 0 END ) - SUM( CASE WHEN TL.is_credit = 1 THEN amount ELSE 0 END ) AS "total_amount"
-                        FROM TransactionsLedger AS TL LEFT JOIN Accounts AS ACCS
-                        WHERE TL.account_id = ACCS.id
-                            AND date_of_transaction >= DATE('now', 'start of year', 'start of month') AND date_of_transaction <= DATE('now')
-                        GROUP BY account_type, date
-                        HAVING account_type IN (2, 5)
-                        ORDER BY date ASC;
-                            `);
+                    stmt = db.prepare(
+`WITH RECURSIVE MonthTimeline(month_str) AS (
+    -- 1. Start with the first month of the current year
+    SELECT strftime('%Y-%m', 'now', 'start of year')
+    UNION ALL
+    -- 2. Increment month by month until we reach the current month
+    SELECT strftime('%Y-%m', date(month_str || '-01', '+1 month'))
+    FROM MonthTimeline
+    WHERE month_str < strftime('%Y-%m', 'now')
+),
+MasterGrid AS (
+    SELECT t.id AS account_type, m.month_str AS report_date
+    FROM AccountType t
+    CROSS JOIN MonthTimeline m
+    on t.id IN (2, 5)
+)
+SELECT 
+    G.account_type,
+    G.report_date AS date,
+    COALESCE(
+        SUM(CASE WHEN TL.is_credit = 0 THEN TL.amount ELSE 0 END) - 
+        SUM(CASE WHEN TL.is_credit = 1 THEN TL.amount ELSE 0 END), 
+        0
+    ) AS "total_amount"
+FROM MasterGrid G
+LEFT JOIN Accounts AS ACCS 
+    ON G.account_type = ACCS.account_type
+LEFT JOIN TransactionsLedger AS TL 
+    ON ACCS.id = TL.account_id 
+    AND strftime('%Y-%m', TL.date_of_transaction) = G.report_date
+    AND TL.date_of_transaction <= DATE('now')
+GROUP BY G.account_type, G.report_date
+ORDER BY date ASC, G.account_type ASC;`);
                     result = stmt.all();
                     break;
 
                 case 2: // previous 3 month account total amount of expense
                     console.log( "running 2" )
-                    stmt = db.prepare(`SELECT ACCS.name AS account, 
-                                    SUM( CASE WHEN TL.is_credit = 0 THEN amount ELSE 0 END ) - SUM(CASE WHEN TL.is_credit = 1 THEN amount ELSE 0 END) AS "total_amount"
-                                    FROM TransactionsLedger AS TL LEFT JOIN Accounts AS ACCS
-                                    WHERE TL.account_id = ACCS.id
-                                        AND TL.date_of_transaction >= DATE('now', '-3 months', 'start of month')
-                                        AND TL.date_of_transaction <= DATE('now')
-                                        AND ACCS.account_type = 2
-                                    GROUP BY account;
-                                        `);
+                    stmt = db.prepare(
+`SELECT ACCS.name AS account, 
+    SUM( CASE WHEN TL.is_credit = 0 THEN amount ELSE 0 END ) - SUM(CASE WHEN TL.is_credit = 1 THEN amount ELSE 0 END) AS "total_amount"
+FROM TransactionsLedger AS TL LEFT JOIN Accounts AS ACCS
+ON TL.account_id = ACCS.id
+WHERE TL.date_of_transaction >= DATE('now', '-3 months', 'start of month')
+    AND TL.date_of_transaction <= DATE('now')
+    AND ACCS.account_type = 2
+GROUP BY account;`);
                     result = stmt.all();
                     break;
 
                 case 3: // year-till-date expense amount monthly
                     console.log( "running 3" )
-                    stmt = db.prepare(`SELECT 
-                            strftime('%Y-%m', date_of_transaction) AS date, 
-                            SUM( CASE WHEN TL.is_credit = 0 THEN amount ELSE 0 END ) - SUM( CASE WHEN TL.is_credit = 1 THEN amount ELSE 0 END ) AS "total_amount"
-                        FROM TransactionsLedger AS TL LEFT JOIN Accounts AS ACCS
-                        WHERE TL.account_id = ACCS.id
-                            AND date_of_transaction >= DATE('now', 'start of year', 'start of month') AND date_of_transaction <= DATE('now')
-                            AND account_type = 2
-                        GROUP BY date
-                        ORDER BY date ASC;
-                            `);
+                    stmt = db.prepare(
+`SELECT 
+    strftime('%Y-%m', date_of_transaction) AS date, 
+    SUM( CASE WHEN TL.is_credit = 0 THEN amount ELSE 0 END ) - SUM( CASE WHEN TL.is_credit = 1 THEN amount ELSE 0 END ) AS "total_amount"
+FROM TransactionsLedger AS TL LEFT JOIN Accounts AS ACCS
+ON TL.account_id = ACCS.id
+WHERE date_of_transaction >= DATE('now', 'start of year', 'start of month') AND date_of_transaction <= DATE('now')
+    AND account_type = 2
+GROUP BY date
+ORDER BY date ASC;`);
                     result = stmt.all();
                     break;
 
                 case 4: // previous 3 month transaction count
                     console.log( "running 4" )
-                    stmt = db.prepare(`SELECT COUNT(*) AS count, strftime('%Y-%m', created_at) AS date 
-                        FROM TransactionsJournal 
-                        WHERE created_at >= DATE('now', '-2 months', 'start of month')
-                            AND created_at <= DATE('now')
-                        GROUP BY date
-                        ORDER BY date ASC;
-                            `);
+                    stmt = db.prepare(
+`SELECT COUNT(*) AS count, strftime('%Y-%m', created_at) AS date 
+FROM TransactionsJournal 
+WHERE created_at >= DATE('now', '-2 months', 'start of month')
+    AND created_at <= DATE('now')
+GROUP BY date
+ORDER BY date ASC;`);
                     result = stmt.all();
                     break;
 
@@ -463,18 +485,18 @@ export default function createRouter(db, __dirname) {
             }
             else if ( displayNearest3Month && (countMode && groupByMonth) ) {
                 const stmt = db.prepare(`SELECT COUNT(*) AS count, strftime('%Y-%m', created_at) AS date 
-                                        FROM TransactionsJournal 
-                                        WHERE created_at >= DATE('now', '-3 months', 'start of month')
-                                            AND created_at <= DATE('now')
-                                        GROUP BY date
-                                        ORDER BY date ASC;
+FROM TransactionsJournal 
+WHERE created_at >= DATE('now', '-3 months', 'start of month')
+    AND created_at <= DATE('now')
+GROUP BY date
+ORDER BY date ASC;
                                             `);
                 result = stmt.all();
             }
             else if ( displayNearest3Month ) {
                 const stmt = db.prepare(`SELECT * FROM TransactionsJournal 
-                                        WHERE created_at >= DATE('now', '-3 months', 'start of month')
-                                            AND created_at <= DATE('now');`);
+WHERE created_at >= DATE('now', '-3 months', 'start of month')
+    AND created_at <= DATE('now');`);
                 result = stmt.all();
             }
             else {
@@ -527,20 +549,20 @@ export default function createRouter(db, __dirname) {
             else if ( displayNearest3Month && graphForDemo ) {
                 // stmt : getting and returning all the account name and their spending / earing amount in the previous 3 month
                 const stmt = db.prepare(`SELECT ACCS.name AS account, 
-                                        SUM( CASE WHEN TL.is_credit = 0 THEN amount ELSE 0 END ) - SUM(CASE WHEN TL.is_credit = 1 THEN amount ELSE 0 END) AS "total_amount"
-                                        FROM TransactionsLedger AS TL LEFT JOIN Accounts AS ACCS
-                                        WHERE TL.account_id = ACCS.id
-                                            AND TL.date_of_transaction >= DATE('now', '-3 months', 'start of month')
-                                            AND TL.date_of_transaction <= DATE('now')
-                                            AND ACCS.account_type = 2
-                                        GROUP BY account;
-                                            `);
+SUM( CASE WHEN TL.is_credit = 0 THEN amount ELSE 0 END ) - SUM(CASE WHEN TL.is_credit = 1 THEN amount ELSE 0 END) AS "total_amount"
+FROM TransactionsLedger AS TL LEFT JOIN Accounts AS ACCS
+WHERE TL.account_id = ACCS.id
+    AND TL.date_of_transaction >= DATE('now', '-3 months', 'start of month')
+    AND TL.date_of_transaction <= DATE('now')
+    AND ACCS.account_type = 2
+GROUP BY account;`);
                 result = stmt.all();
             }
             else if ( displayNearest3Month ) {
-                const stmt = db.prepare(`SELECT * FROM TransactionsLedger 
-                                        WHERE date_of_transaction >= DATE('now', '-3 months', 'start of month')
-                                            AND date_of_transaction <= DATE('now')`);
+                const stmt = db.prepare(`SELECT * 
+FROM TransactionsLedger 
+WHERE date_of_transaction >= DATE('now', '-3 months', 'start of month')
+    AND date_of_transaction <= DATE('now')`);
                 result = stmt.all();
             }
             else {
@@ -646,7 +668,7 @@ export default function createRouter(db, __dirname) {
             let stmt;
             if ( table == "TransactionsLedger" ) {
                 stmt = db.prepare(`SELECT TL.id, TL.transaction_id, TL.date_of_transaction, account_id, ACCS.name, TL.amount, is_credit, TL.currency, TL.is_foreign, TL.exchange_rate 
-                    FROM ${table} AS TL LEFT JOIN Accounts AS ACCS WHERE TL.account_id = ACCS.id `);
+    FROM ${table} AS TL LEFT JOIN Accounts AS ACCS WHERE TL.account_id = ACCS.id `);
             }
             else {
                 stmt = db.prepare(`SELECT * FROM ${table}`);
