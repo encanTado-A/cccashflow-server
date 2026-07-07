@@ -48,13 +48,15 @@ const args = process.argv || 0;
 
 const isHelp = args.includes('--help') || args.includes('-h');
 if (isHelp) {
-    console.log( `--demo / -d \t\t : program will start in demo setting, including demo database` )
-    console.log( `--test / -t \t\t : program will start in test setting, including testing database` )
+    console.log( `--demo / -d \t\t : program will start in demo setting, including demo database` );
+    console.log( `--test / -t \t\t : program will start in test setting, including testing database` );
+    console.log( `--verbose / -v \t\t : database will be verbose` );
 
     process.exit(0);
 }
 const flagDemo = args.includes('--demo') || args.includes('-d');
 const flagTest = args.includes('--test') || args.includes('-t');
+const flagVerbose = args.includes('--verbose') || args.includes('-v');
 const flagproduction = ! (flagDemo || flagTest);
 
 // ##################################################
@@ -64,10 +66,10 @@ try {
     // console.log('DEMO_DATABASE_PATH=', process.env.DEMO_DATABASE_PATH);
     
     if (flagDemo) {
-        db = demoConnectSqliteDB(); // <-- call the function to get Database instance
+        db = demoConnectSqliteDB( flagVerbose ); // <-- call the function to get Database instance
     }
     else if (flagTest) {
-        db = testConnectSqliteDB(); // <-- call the function to get Database instance
+        db = testConnectSqliteDB( flagVerbose ); // <-- call the function to get Database instance
     }
     // db = connectSqliteDB(); // <-- call the function to get Database instance
 

@@ -20,7 +20,7 @@ const demo_table_name = [
 
 let db = null;
 
-const demoConnectSqliteDB = () => {
+const demoConnectSqliteDB = (verbose) => {
     console.log("status: call from test-db-connect.cjs");
     console.log(`status: connecting to ${process.env.TEST_DATABASE_FILENAME}`);
     try {
@@ -31,7 +31,12 @@ const demoConnectSqliteDB = () => {
             process.exit(-1);
         }
         
-        db = new Database(db_file_path, { verbose: console.log, fileMustExist: true});
+        if ( verbose ) {
+            db = new Database(db_file_path, { verbose: console.log, fileMustExist: true});
+        }
+        else {
+            db = new Database(db_file_path, { fileMustExist: true});
+        }
     }
     catch (error) {
         console.error('status: Database connection failed:', error.message);
