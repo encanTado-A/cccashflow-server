@@ -18,6 +18,7 @@ import testConnectSqliteDB from './test-db-connect.cjs';
 import createRouterAdd from './router-add.mjs';
 import createRouterAPI from './router-API-V1.mjs';
 import createRouterView from './router-view.mjs';
+import createRouterTest from './router-test.mjs';
 
 /*
 potential problem
@@ -93,14 +94,6 @@ app.get('/', logger, async (req, res) => {
     res.render('index', { title: 'Home', username: 'Andrew' }); 
 });
 
-app.get('/test', logger, async (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'test.html'));
-});
-
-app.get('/testejs', logger, async (req, res) => {
-    res.render('test', { title: 'Home', username: 'Andrew' });
-}); 
-
 // --------------------------------------------------
 // /add pages
 
@@ -121,6 +114,12 @@ app.use('/api', router_apiv1);
 
 // --------------------------------------------------
 
+// test pages
+
+const router_test = createRouterTest(db, __dirname);  // wire db into router
+app.use('/test', router_test);
+
+// --------------------------------------------------
 
 // web access
 if (flagproduction) {
