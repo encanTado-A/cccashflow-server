@@ -10,15 +10,18 @@ import Database from 'better-sqlite3';
 // import csv from 'csv-parser';
 import env from 'dotenv';
 import Chart from 'chart.js/auto';
+// import passport from 'passport';
+// import localstrategy from 'passport-local';
+// import cookieParser from 'cookie-parser';
 
 // local js
-import logger from './logger.mjs';
+import logger from './middleware/logger.mjs';
 import demoConnectSqliteDB from './demo-db.cjs';
 import testConnectSqliteDB from './test-db-connect.cjs';
-import createRouterAdd from './router-add.mjs';
-import createRouterAPI from './router-API-V1.mjs';
-import createRouterView from './router-view.mjs';
-import createRouterTest from './router-test.mjs';
+import createRouterAdd from './router/router-add.mjs';
+import createRouterAPI from './router/router-API-V1.mjs';
+import createRouterView from './router/router-view.mjs';
+import createRouterTest from './router/router-test.mjs';
 
 /*
 potential problem
@@ -43,6 +46,7 @@ app.use( express.static(path.join(__dirname, 'public'), { index: false }) );
 // middleware
 app.use(express.json()); // auto parse JSON  and places result object onto res.body
 app.use(express.urlencoded({ extended: true })) // parse data submitted via HTML <form>
+// app.use(cookieParser());
 
 // ##################################################
 const args = process.argv || 0;
@@ -61,6 +65,7 @@ const flagVerbose = args.includes('--verbose') || args.includes('-v');
 const flagproduction = ! (flagDemo || flagTest);
 
 // ##################################################
+// get database connection
 
 let db = null;
 try {
@@ -85,6 +90,57 @@ catch (error) {
     console.error('status: Database connection failed:', error.message);
     process.exit(-1);
 }
+
+// ##################################################
+// password and local strategy
+
+// app.use(passport.initialize());
+// app.use(passport.session());
+
+// app.use(session({
+//     secret: 'secret',
+//     resave: false,
+//     saveUninitialized: false
+// }));
+
+// passport.use(new LocalStrategy(
+//     function(username, password, done) {
+//         try {
+//             const stmt = db.prepare( 'SELECT * FROM users WHERE username = ?' );
+//             const user = stmt.get( username );
+
+//             if (!user) {
+//                 return done(null, false, { message: 'Incorrect username.' });
+//             }
+
+//             // verify password
+//             if ( password === user.password ) {
+//                 return done(null, user);
+//             }
+//             else {
+//                 return done(null, false, { message: 'Incorrect password.' });
+//             }
+//         }
+//         catch (err) {
+//             return done(err);
+//         }
+//     }
+// ));
+
+// passport.serializeUser((user, done) => {
+//     done(null, user.id);
+// });
+
+// passport.deserializeUser((id, done) => {
+//     try {
+//         const stmt_result = db.prepare(`SELECT * from User WHERE id = ?`).all( id );
+//         done(null, user);
+//     }
+//     catch (err) {
+//         done(err, null);
+//     }
+// });
+
 
 // ##################################################
 // web access function
