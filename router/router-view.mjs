@@ -2,7 +2,7 @@
 import express from 'express';
 
 // local js
-import logger from './logger.mjs';
+import logger from '../middleware/logger.mjs';
 
 export default function createRouter(db, __dirname) {
     const router = express.Router();

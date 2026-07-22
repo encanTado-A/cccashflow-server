@@ -3,7 +3,7 @@
 import express from 'express';
 
 // local js
-import logger from './logger.mjs';
+import logger from '../middleware/logger.mjs';
 
 // --------------------------------------------------
 
@@ -61,6 +61,26 @@ export default function createRouter(db, __dirname) {
     router.get('/ai/record', logger, async (req, res) => {
         const query_body = req.body;
         res.render('test-dashboard-ai', { title: 'record', username: 'Andrew' });
+    });
+
+    router.get('/ai/login', logger, async (req, res) => {
+        const query_body = req.body;
+        res.render('test-login', { title: 'Login', username: 'Andrew' });
+    });
+
+    router.post('/ai/login', logger, async (req, res) => {
+        const query_body = req.body;
+        res.render('test-dashboard-ai', { title: 'Login', username: 'Andrew' });
+    });
+    
+    router.get('/ai/register', logger, async (req, res) => {
+        const query_body = req.body;
+        res.render('test-register', { title: 'Register', username: 'Andrew' });
+    });
+
+    router.post('/ai/register', logger, async (req, res) => {
+        const query_body = req.body;
+        res.render('test-dashboard-ai', { title: 'Register', username: 'Andrew' });
     });
 
     // --------------------------------------------------

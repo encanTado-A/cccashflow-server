@@ -2,7 +2,7 @@
 import express from 'express';
 
 // local js
-import logger from './logger.mjs';
+import logger from '../middleware/logger.mjs';
 
 // Whitelist of allowed tables for security
 const ALLOWED_TABLES = [
