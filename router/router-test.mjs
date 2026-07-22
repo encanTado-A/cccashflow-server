@@ -38,6 +38,10 @@ export default function createRouter(db, __dirname) {
     // --------------------------------------------------
     // ai fast track
 
+    router.get('/ai/', logger, async (req, res) => {
+        res.redirect(`/test/ai/dashboard`);
+    });
+
     router.get('/ai/dashboard', logger, async (req, res) => {
         res.render('test-dashboard-ai', { title: 'Home', username: 'Andrew' });
     });
@@ -63,24 +67,63 @@ export default function createRouter(db, __dirname) {
         res.render('test-dashboard-ai', { title: 'record', username: 'Andrew' });
     });
 
+    router.get('/ai/sensitive', logger, async (req, res) => {
+        // passport.authenticate('local', { failureRedirect: '/login' });
+
+
+        res.sendfile(`you found me`);
+    });
+
     router.get('/ai/login', logger, async (req, res) => {
-        const query_body = req.body;
-        res.render('test-login', { title: 'Login', username: 'Andrew' });
+        return res.render('test-login', { title: 'Login', username: 'Andrew' });
     });
 
     router.post('/ai/login', logger, async (req, res) => {
-        const query_body = req.body;
-        res.render('test-dashboard-ai', { title: 'Login', username: 'Andrew' });
+        // const query_body = req.body;
+        console.log("Request Body: " + JSON.stringify(req.body, null, 2));
+
+        if ( ! req.body ) {
+            console.log( `error: null detected!`);
+        }
+
+        const username = req.body.username;
+        const password = req.body.user_password;
+
+        try {
+            const stmt_result = db.prepare(`SELECT * from User WHERE username = ?`).all( username );
+            if ( !stmt_result || stmt_result.length < 1 ) {
+                console.log( `status: user not found` );
+                return res.json( { "status": "failed", "message": `user not found` } );
+            }
+
+            // console.log( `san-check: ${stmt_result}` );
+            console.log( `san-check: ${JSON.stringify(stmt_result, null, 2)}` );
+            
+            console.log( typeof password, typeof stmt_result[0].password );
+
+            if ( password === stmt_result[0].password) {
+                console.log( `status: user ${stmt_result[0].username} login in` );
+            }
+            else {
+                console.log( `flag: user ${stmt_result[0].username} login attempt` );
+                return res.json( { "status": "error", "message": `password incorrect` } );
+            }
+        }
+        catch (err) {
+            console.log( `error: ${err}`);
+            return res.json( { "status": "error", "message": `${err}` } );
+        }
+        
+        return res.redirect('/test/ai/dashboard');
     });
     
     router.get('/ai/register', logger, async (req, res) => {
-        const query_body = req.body;
-        res.render('test-register', { title: 'Register', username: 'Andrew' });
+        return res.render('test-register', { title: 'Register', username: 'Andrew' });
     });
 
     router.post('/ai/register', logger, async (req, res) => {
         const query_body = req.body;
-        res.render('test-dashboard-ai', { title: 'Register', username: 'Andrew' });
+        return res.render('test-dashboard-ai', { title: 'Register', username: 'Andrew' });
     });
 
     // --------------------------------------------------
