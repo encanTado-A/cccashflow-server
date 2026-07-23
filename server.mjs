@@ -10,6 +10,7 @@ import Database from 'better-sqlite3';
 // import csv from 'csv-parser';
 import env from 'dotenv';
 import Chart from 'chart.js/auto';
+import bcrypt from 'bcryptjs';
 // import passport from 'passport';
 // import localstrategy from 'passport-local';
 // import cookieParser from 'cookie-parser';
@@ -94,6 +95,9 @@ catch (error) {
 // ##################################################
 // password and local strategy
 
+// const salt = await bcrypt.genSalt(10);
+const salt = 10;
+
 // app.use(passport.initialize());
 // app.use(passport.session());
 
@@ -172,7 +176,7 @@ app.use('/api', router_apiv1);
 
 // test pages
 
-const router_test = createRouterTest(db, __dirname);  // wire db into router
+const router_test = createRouterTest(express, db, bcrypt, salt, __dirname);  // wire db into router
 app.use('/test', router_test);
 
 // --------------------------------------------------

@@ -7,7 +7,7 @@ import logger from '../middleware/logger.mjs';
 
 // --------------------------------------------------
 
-export default function createRouter(express, db, bcrypt, __dirname) {
+export default function createRouter(express, db, bcrypt, salt, __dirname) {
     const router = express.Router();
 
     router.get('/', logger, async (req, res) => {
@@ -99,17 +99,15 @@ export default function createRouter(express, db, bcrypt, __dirname) {
                 return res.json( { "status": "failed", "message": `user not found` } );
             }
 
-            // console.log( `san-check: ${stmt_result}` );
             console.log( `san-check: ${JSON.stringify(stmt_result, null, 2)}` );
-            
-            console.log( typeof password, typeof stmt_result[0].password );
+            // console.log( typeof password, typeof stmt_result[0].password );
 
-            if ( password === stmt_result[0].password) {
+            if ( await bcrypt.compare(password, stmt_result[0].password) ) {
                 console.log( `status: user ${stmt_result[0].username} login in` );
             }
             else {
                 console.log( `flag: user ${stmt_result[0].username} login attempt` );
-                return res.json( { "status": "error", "message": `password incorrect` } );
+                return res.json( { "status": "error", "message": `username or password incorrect` } );
             }
         }
         catch (err) {
@@ -133,7 +131,7 @@ export default function createRouter(express, db, bcrypt, __dirname) {
         }
 
         const username = req.body.username;
-        const password = req.body.user_password;
+        const password = await bcrypt.hash(req.body.user_password, salt);
 
         let stmt_result = null
         try {
