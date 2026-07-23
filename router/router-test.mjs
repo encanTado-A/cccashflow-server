@@ -7,7 +7,7 @@ import logger from '../middleware/logger.mjs';
 
 // --------------------------------------------------
 
-export default function createRouter(db, __dirname) {
+export default function createRouter(express, db, bcrypt, __dirname) {
     const router = express.Router();
 
     router.get('/', logger, async (req, res) => {
@@ -71,10 +71,13 @@ export default function createRouter(db, __dirname) {
         // passport.authenticate('local', { failureRedirect: '/login' });
 
 
-        res.sendfile(`you found me`);
+        res.send(`you found me`);
     });
 
     router.get('/ai/login', logger, async (req, res) => {
+        if ( !"login-ed" ) {
+            return res.redirect('/test/ai/dashboard');
+        }
         return res.render('test-login', { title: 'Login', username: 'Andrew' });
     });
 
@@ -122,8 +125,75 @@ export default function createRouter(db, __dirname) {
     });
 
     router.post('/ai/register', logger, async (req, res) => {
-        const query_body = req.body;
-        return res.render('test-dashboard-ai', { title: 'Register', username: 'Andrew' });
+        console.log("Request Body: " + JSON.stringify(req.body, null, 2));
+
+        if ( ! req.body ) {
+            console.log( `error: null detected!`);
+            return res.render( `not-found` );
+        }
+
+        const username = req.body.username;
+        const password = req.body.user_password;
+
+        let stmt_result = null
+        try {
+            stmt_result = db.prepare(`SELECT * from User WHERE username = ?`).all( username );
+        }
+        catch (err) {
+            console.log( `error: ${err}`);
+            return res.json( { "status": "error", "message": `${err}` } );
+        }
+        
+        console.log( `san-check: ${JSON.stringify(stmt_result, null, 2)}` );
+
+        if ( stmt_result.length == 1 && ( username === stmt_result[0].username ) ) {
+            console.log( `status: duplicate username ${username} registeration` );
+            return res.json( { "status": "dup", "message": `username ${username} already exist` } );
+        }
+
+        // password strength test
+        if ( !"pass strength test" ) {
+            // console.log( `status: user ${stmt_result[0].username} login attempt` );
+            return res.json( { "status": "failure", "message": `password strength failed` } );
+        }
+
+        // --------------------------------------------------
+
+        console.log( `proceed to insertion` )
+        const description = "";
+
+        const insertTransaction = db.transaction( (stmt, userData) => {
+            let info = stmt.run({
+                username: userData.username,
+                password: userData.password,
+                description: userData.description
+                // created_at: userData.created_at,
+                // is_deleted: 0
+            }); 
+            if ( ! info || info.changes != 1) {
+                throw new Error(`Failed to insert New user : ${userData.username} ${userData.password} ${userData.description}`);
+            }
+            return info;
+        });
+
+        try {
+            // const stmt_create_new_user = db.prepare( `INSERT INTO User(username, password, description) VALUES (?, ?, ?)` ).run( username, password, description );
+            const stmt_create_new_user = db.prepare( `INSERT INTO User(username, password, description) VALUES (@username, @password, @description)` );
+            const userData = {
+                "username": username, 
+                "password": password, 
+                "description": description
+            }
+
+            stmt_result = insertTransaction(stmt_create_new_user, userData)
+            console.log( `san-check: ${JSON.stringify(stmt_result, null, 2)}` );
+        }
+        catch (err) {
+            console.log( `error: ${err}`);
+            return res.json( { "status": "error", "message": `${err}` } );
+        }
+
+        return res.redirect('/test/ai/login'); // return res.json( { "status": "success", "action": "redirect", "destination": "/test/ai/login" } );
     });
 
     // --------------------------------------------------
