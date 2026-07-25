@@ -1,34 +1,41 @@
-// necessary library
+// ----- necessary library -----
 // node.js native
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// external
+// ----- external -----
 import express from 'express';
 import Database from 'better-sqlite3';
 // import csv from 'csv-parser';
 import env from 'dotenv';
 import Chart from 'chart.js/auto';
 import bcrypt from 'bcryptjs';
-// import passport from 'passport';
-// import localstrategy from 'passport-local';
+import passport from 'passport';
+import session from 'express-session';
 // import cookieParser from 'cookie-parser';
 
-// local js
+// ----- local js -----
+
+// middleware
 import logger from './middleware/logger.mjs';
-import demoConnectSqliteDB from './demo-db.cjs';
-import testConnectSqliteDB from './test-db-connect.cjs';
+import utili_sqlite from './db/utili-sqlite.mjs';
+
+// auth
+import initializePassport from './auth/passport.mjs';
+import auth_check from './middleware/auth-check.cjs';
+
+// router
 import createRouterAdd from './router/router-add.mjs';
 import createRouterAPI from './router/router-API-V1.mjs';
 import createRouterView from './router/router-view.mjs';
+
+// demo / test only
+import demoConnectSqliteDB from './demo-db.cjs';
+import testConnectSqliteDB from './test-db-connect.cjs';
+
 import createRouterTest from './router/router-test.mjs';
-
-/*
-potential problem
-path format difference on different OSes
-
-*/
+import auth_check_test from './middleware/auth-check-test.cjs';
 
 // ##################################################
 
@@ -48,8 +55,17 @@ app.use( express.static(path.join(__dirname, 'public'), { index: false }) );
 app.use(express.json()); // auto parse JSON  and places result object onto res.body
 app.use(express.urlencoded({ extended: true })) // parse data submitted via HTML <form>
 // app.use(cookieParser());
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object' && '_method' in req.query) {
+    req.method = req.query._method.toUpperCase();
+    delete req.body._method; // clean up so it doesn't affect your controllers
+  }
+  next();
+});
 
 // ##################################################
+// handle command options
+
 const args = process.argv || 0;
 
 const isHelp = args.includes('--help') || args.includes('-h');
@@ -93,58 +109,31 @@ catch (error) {
 }
 
 // ##################################################
-// password and local strategy
 
-// const salt = await bcrypt.genSalt(10);
-const salt = 10;
+// utili program
+const utiliSqlite = utili_sqlite(db);
 
-// app.use(passport.initialize());
-// app.use(passport.session());
+// ##################################################
+// passport and local strategy
 
-// app.use(session({
-//     secret: 'secret',
-//     resave: false,
-//     saveUninitialized: false
-// }));
+let salt = null;
+if ( flagDemo || flagTest ) {
+    salt = 10;
+}
+else {
+    salt = await bcrypt.genSalt(10);
+}
 
-// passport.use(new LocalStrategy(
-//     function(username, password, done) {
-//         try {
-//             const stmt = db.prepare( 'SELECT * FROM users WHERE username = ?' );
-//             const user = stmt.get( username );
+initializePassport(passport, bcrypt, utiliSqlite);
 
-//             if (!user) {
-//                 return done(null, false, { message: 'Incorrect username.' });
-//             }
+app.use(session({
+    secret: 'secret',
+    resave: false,
+    saveUninitialized: false
+}));
 
-//             // verify password
-//             if ( password === user.password ) {
-//                 return done(null, user);
-//             }
-//             else {
-//                 return done(null, false, { message: 'Incorrect password.' });
-//             }
-//         }
-//         catch (err) {
-//             return done(err);
-//         }
-//     }
-// ));
-
-// passport.serializeUser((user, done) => {
-//     done(null, user.id);
-// });
-
-// passport.deserializeUser((id, done) => {
-//     try {
-//         const stmt_result = db.prepare(`SELECT * from User WHERE id = ?`).all( id );
-//         done(null, user);
-//     }
-//     catch (err) {
-//         done(err, null);
-//     }
-// });
-
+app.use(passport.initialize());
+app.use(passport.session());
 
 // ##################################################
 // web access function
@@ -157,38 +146,37 @@ app.get('/', logger, async (req, res) => {
 // --------------------------------------------------
 // /add pages
 
-const router_add = createRouterAdd(db, __dirname);  // wire db into router
+const router_add = createRouterAdd(db, logger, __dirname);  // wire db into router
 app.use('/add', router_add);
 
 // --------------------------------------------------
 // view pages
 
-const router_view = createRouterView(db, __dirname);  // wire db into router
+const router_view = createRouterView(db, logger, __dirname);  // wire db into router
 app.use('/view', router_view);
 
 // --------------------------------------------------
 // api pages
 
-const router_apiv1 = createRouterAPI(db, __dirname);  // wire db into router
+const router_apiv1 = createRouterAPI(db, logger, __dirname);  // wire db into router
 app.use('/api', router_apiv1);
 
 // --------------------------------------------------
-
 // test pages
 
-const router_test = createRouterTest(express, db, bcrypt, salt, __dirname);  // wire db into router
+const router_test = createRouterTest(express, db, passport, bcrypt, salt, logger, auth_check_test);  // wire db into router
 app.use('/test', router_test);
 
 // --------------------------------------------------
 
 // web access
-if (flagproduction) {
+if ( flagproduction ) {
     app.listen(8000, () => {
         console.log(`Server is running on http://localhost:8000`)
     });
 
 }
-else if (flagDemo || flagTest) {
+else if ( flagDemo || flagTest ) {
     app.listen(process.env.DEMO_PORT, () => {
         console.log(`Server is running on http://${process.env.DEMO_WEB_IP}:${process.env.DEMO_PORT}`)
     });
