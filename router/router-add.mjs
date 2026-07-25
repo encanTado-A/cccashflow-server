@@ -1,15 +1,12 @@
 // external
 import express from 'express';
 
-// local js
-import logger from '../middleware/logger.mjs';
-
 // existing path
 // '/': get
 // '/transaction': get, post
 // '/currency': get, post
 
-export default function createRouter(db, __dirname) {
+export default function createRouter(db, logger, __dirname) {
     const router = express.Router();
 
     // --------------------------------------------------

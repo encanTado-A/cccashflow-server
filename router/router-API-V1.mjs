@@ -1,9 +1,6 @@
 // officical
 import express from 'express';
 
-// local js
-import logger from '../middleware/logger.mjs';
-
 // Whitelist of allowed tables for security
 const ALLOWED_TABLES = [
     'AccountType',
@@ -93,7 +90,7 @@ function getColumnsFromPragma(db, tableName) {
 //     }
 // } // end buildWhereClause ()
 
-export default function createRouter(db, __dirname) {
+export default function createRouter(db, logger, __dirname) {
     const router = express.Router();
 
     router.get('/v1/', logger, async (req, res) => {

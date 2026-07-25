@@ -1,10 +1,7 @@
 // officical
 import express from 'express';
 
-// local js
-import logger from '../middleware/logger.mjs';
-
-export default function createRouter(db, __dirname) {
+export default function createRouter(db, logger, __dirname) {
     const router = express.Router();
 
     router.get('/tables', logger, async (req, res) => {
