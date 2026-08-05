@@ -3,11 +3,10 @@ import passportLocal from 'passport-local';
 const LocalStrategy = passportLocal.Strategy;
 
 export default function initializePassport(passport, bcrypt, utiliSqlite) {
-    console.log( `hi from passport 1` );
+    console.log( `loaded passport.mjs` );
     // console.log( `${passport} ${bcrypt} ${Object.keys(utiliSqlite)}` );
     
     async function authenticateUser(username, password, done) {
-        console.log( `hi from passport 2` );
         try {
             const user = utiliSqlite.getUserForLoginByUsername( username );
             console.log("user: " + JSON.stringify(user, null, 2));
