@@ -18,7 +18,7 @@ if (!csvPath || !jsonColumn) {
 
 const absoluteCsvPath = path.isAbsolute(csvPath)
     ? csvPath
-    : path.join(__dirname, "..", "databases", csvPath);
+    : path.join(__dirname, "../../..", "databases", csvPath);
 
 if (!fs.existsSync(absoluteCsvPath)) {
     console.error(`CSV file not found: ${absoluteCsvPath}`);
@@ -82,7 +82,7 @@ stream.on('end', () => {
     if (outputFile) {
         const absoluteOutputPath = path.isAbsolute(outputFile)
         ? outputFile
-        : path.join(__dirname, "..", "databases", outputFile);
+        : path.join(__dirname, "../../..", "databases", outputFile);
 
         fs.writeFileSync(absoluteOutputPath, JSON.stringify(parsedJsonRows, null, 2));
         console.log(`Exported JSON data to ${absoluteOutputPath}`);
