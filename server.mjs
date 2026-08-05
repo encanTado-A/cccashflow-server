@@ -31,8 +31,8 @@ import createRouterAPI from './router/router-API-V1.mjs';
 import createRouterView from './router/router-view.mjs';
 
 // demo / test only
-import demoConnectSqliteDB from './demo-db.cjs';
-import testConnectSqliteDB from './test-db-connect.cjs';
+import demoConnectSqliteDB from './set-up/demo/demo-db.cjs';
+import testConnectSqliteDB from './set-up/test/test-db-connect.cjs';
 
 import createRouterTest from './router/router-test.mjs';
 import auth_check_test from './middleware/auth-check-test.cjs';

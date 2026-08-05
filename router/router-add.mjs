@@ -36,7 +36,7 @@ export default function createRouter(db, logger, __dirname) {
     // transaction related
     
     router.get('/transaction', logger, async (req, res) => {
-        return res.render('form-transaction', { title: 'Add Transaction' });
+        return res.render('form/form-transaction', { title: 'Add Transaction' });
     }); // end get(/transaction)
 
     // ready function for open transaction in TransactionJournal and TransactionLedger
@@ -282,7 +282,7 @@ export default function createRouter(db, logger, __dirname) {
     // --------------------------------------------------
 
     router.get('/account', logger, async (req, res) => {
-        res.render('form-account', { title: "account" });
+        res.render('form/form-account', { title: "account" });
     }); // end get(/account)
     
     router.post('/account', logger, async (req, res) => {
@@ -337,7 +337,7 @@ export default function createRouter(db, logger, __dirname) {
     // --------------------------------------------------
 
     router.get('/currency', logger, async (req, res) => {
-        res.render(`form-currency`, { title: "currency form" } );
+        res.render(`form/form-currency`, { title: "currency form" } );
     }); // end get(/currency)
     
     router.post('/currency', logger, async (req, res) => {
