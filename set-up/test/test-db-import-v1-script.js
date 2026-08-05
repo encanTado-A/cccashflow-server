@@ -8,12 +8,14 @@ const env = require('dotenv');
 
 env.config();
 // require env setting
+// TEST_DATABASE_PATH
 // TEST_DATABASE_FILENAME
-// DEMO_CURRENCY_CSV,
-// DEMO_ACCOUNTTYPE_CSV,
-// DEMO_ACCOUNTS_CSV,
+// TEST_CURRENCY_CSV,
+// TEST_ACCOUNTTYPE_CSV,
+// TEST_ACCOUNTS_CSV,
 // TEST_TRANSACTIONSJOURNAL_CSV,
 // TEST_TRANSACTIONSLEDGER_CSV,
+// TEST_USERS_CSV
 
 
 // ##################################################
@@ -55,12 +57,13 @@ if (isHelp) {
     console.log( `-TJ \t\t\t : insert for table TransactionsJournal` );
     console.log( `-TL \t\t\t : insert for table TransactionsLedger` );
     console.log( `-AB \t\t\t : insert for table AccountBalance [not ready]` );
+    console.log( `-TU \t\t\t : insert for table Users` );
     
     process.exit(0);
 }
 
 const flag_run_craete_all_table = args.includes('--all') || args.includes('-a');
-const flag_view_only = (! args.includes('--all') && ! args.includes('-a')) && (args.includes('--view') || args.includes('-v'));
+const flag_view_only = (! flag_run_craete_all_table) && (args.includes('--view') || args.includes('-l'));
 if ( flag_view_only ) {
     console.log("no insertion would be made");
 }
@@ -72,38 +75,41 @@ const isInsertAccounts = args.includes('-TA') ?? 0;
 const isInsertTransactionsJournal = args.includes('-TJ') ?? 0;
 const isInsertTransactionsLedger = args.includes('-TL') ?? 0;
 const isInsertAccountBalance = args.includes('-AB') ?? 0;
+const isInsertUsers = args.includes('-TU') ?? 0;
 
 
 // ##################################################
 
 // __filename __dirname given in cjs
-const __root = path.join(__dirname, "..");
+const __root = path.join(__dirname, "../../..");
 
 // ##################################################
 // path and filename definition
 
-const demo_database_name = process.env.TEST_DATABASE_FILENAME;
+const database_name = process.env.TEST_DATABASE_FILENAME;
 
-const demo_filename = [
+const filename = [
     process.env.TEST_CURRENCY_CSV,
     process.env.TEST_ACCOUNTTYPE_CSV,
     process.env.TEST_ACCOUNTS_CSV,
     process.env.TEST_TRANSACTIONSJOURNAL_CSV,
     process.env.TEST_TRANSACTIONSLEDGER_CSV,
     process.env.TEST_ACCOUNTBALANCE_CSV,
+    process.env.TEST_USERS_CSV,
 ];
 
 
-const demo_table_name = [
+const table_name = [
     `Currency`,
     `AccountType`,
     `Accounts`,
     `TransactionJournal`,
     `TransactionLedger`,
     `AccountBalance`,
+    `Users`,
 ];
 
-const db_file_path = path.join(__root, "databases", demo_database_name);
+const db_file_path = path.join(__root, "databases", database_name);
 if (! fs.existsSync( db_file_path )) {
     console.log('database file does not exists');
     process.exit(-1);
@@ -111,9 +117,10 @@ if (! fs.existsSync( db_file_path )) {
 
 if ( flag_view_only ) {
     console.log( "table can be imported: " );
-    for (let i = 0; i < demo_table_name.length; i++) {
-        console.log(`\t\t${ demo_table_name[i] }`);
+    for (let i = 0; i < table_name.length; i++) {
+        console.log(`\t\t${ table_name[i] }`);
     };
+    process.exit(0);
 }
 
 // ##################################################
@@ -138,17 +145,18 @@ catch (e) {
 
 console.log( "\ntable to be imported: " );
 if ( flag_run_craete_all_table ) {
-    for (let i = 0; i < demo_table_name.length; i++) {
-        console.log(`\t\t${ demo_table_name[i] }`);
+    for (let i = 0; i < table_name.length; i++) {
+        console.log(`\t\t${ table_name[i] }`);
     };
 }
 else {
-    if (isInsertCurrency) console.log(`\t\t${ demo_table_name[0] }`);
-    if (isInsertAccountType) console.log(`\t\t${ demo_table_name[1] }`);
-    if (isInsertAccounts) console.log(`\t\t${ demo_table_name[2] }`);
-    if (isInsertTransactionsJournal) console.log(`\t\t${ demo_table_name[3] }`);
-    if (isInsertTransactionsLedger) console.log(`\t\t${ demo_table_name[4] }`);
-    if (isInsertAccountBalance) console.log(`\t\t${ demo_table_name[5] }`);
+    if (isInsertCurrency) console.log(`\t\t${ table_name[0] }`);
+    if (isInsertAccountType) console.log(`\t\t${ table_name[1] }`);
+    if (isInsertAccounts) console.log(`\t\t${ table_name[2] }`);
+    if (isInsertTransactionsJournal) console.log(`\t\t${ table_name[3] }`);
+    if (isInsertTransactionsLedger) console.log(`\t\t${ table_name[4] }`);
+    if (isInsertAccountBalance) console.log(`\t\t${ table_name[5] }`);
+    // if (isInsertUsers) console.log(`\t\t${ table_name[6] }`);
 }
 
 // init tables
@@ -172,13 +180,30 @@ let tableTransactionsLedgerstmt = db.prepare(`INSERT INTO TransactionsLedger
 let tableAccountBalancestmt = db.prepare(`INSERT INTO AccountBalance 
     (id, account_id, balance, currency, updated_at) 
     VALUES (@id, @account_id, @balance, @currency, @updated_at)`);
+let tableUsersstmt = db.prepare(`INSERT INTO Users 
+    (username, email, password) 
+    VALUES (@username, @email, @password)`);
 
-const CSVCurrencyPath = path.join( __root, "databases",  demo_filename[0]);
-const CSVAccountTypePath = path.join( __root, "databases",  demo_filename[1]);
-const CSVAccountPath = path.join( __root, "databases",  demo_filename[2]);
-const CSVTransactionsJournalPath = path.join( __root, "databases",  demo_filename[3]);
-const CSVTransactionsLedgerPath = path.join( __root, "databases",  demo_filename[4]);
-const CSVAccountBalancePath = path.join( __root, "databases",  demo_filename[5]);
+const CSVCurrencyPath = path.join( __root, "databases",  filename[0]);
+const CSVAccountTypePath = path.join( __root, "databases",  filename[1]);
+const CSVAccountPath = path.join( __root, "databases",  filename[2]);
+const CSVTransactionsJournalPath = path.join( __root, "databases",  filename[3]);
+const CSVTransactionsLedgerPath = path.join( __root, "databases",  filename[4]);
+const CSVAccountBalancePath = path.join( __root, "databases",  filename[5]);
+const CSVUsersPath = path.join(__root, "databases", filename[6]);
+
+// helper function from AI for checking JSON
+function validJsonOrNull(value) {
+    if (!value || value.trim() === '') 
+        // return null;
+        return JSON.stringify({});
+    try {
+        JSON.parse(value);
+        return value;
+    } catch {
+        throw new ValidationError(`invalid JSON metadata: ${value}`);
+    }
+}
 
 const rowMapperCurrencyAndAccountType = (row) => ({
     "id": row.id, 
@@ -198,7 +223,7 @@ const rowMapperAccount = (row) => ({
 const rowMapperTransactionsJournal = (row) => ({   
     "id": row.id,
     "description": row.description,
-    "metadata": row.metadata ? row.metadata : {},
+    "metadata": validJsonOrNull(row.metadata),
     "created_at": row.created_at,
     "is_deleted": row.is_deleted ?? 0
 });
@@ -223,6 +248,12 @@ const rowMapperAccountBalance = (row) => ({
     "updated_at": row.updated_at
 });
 
+const rowMapperUsers = (row) => ({
+    "username": row.username,
+    "email": row.email ?? "",
+    "password": row.password
+});
+
 // init a wraper function for batch insert
 let insertMany = db.transaction ( (rows, stmt) => {
     for ( const row of rows ) 
@@ -232,7 +263,7 @@ let insertMany = db.transaction ( (rows, stmt) => {
 
 function logImportResult(tableName, status, details = '') {
     importResults.push({ tableName, status, details });
-
+    
     if (status === 'success') {
         console.log(`status: success for table ${tableName} - ${details}`);
     } else {
@@ -250,7 +281,7 @@ async function importCSV ( CSVFilePath, tableName, insertSQL, rowMapper) {
         }
         console.log( `status: csv file path: ${CSVFilePath}` )
 
-        // const methodToInput = demo_table_name.indexOf(tableName);
+        // const methodToInput = table_name.indexOf(tableName);
 
         const stream = fs.createReadStream( CSVFilePath ).pipe(csv());
 
@@ -278,7 +309,7 @@ async function importCSV ( CSVFilePath, tableName, insertSQL, rowMapper) {
 
         stream.on('end', () => {
             try {
-                console.log( `csv data sample : \n${ JSON.stringify( dataBuffer.slice(0,3), null, 2 ) } `);
+                console.log( `csv data sample : \n${ JSON.stringify( dataBuffer.slice(-3), null, 2 ) } `);
                 insertMany(dataBuffer, insertSQL);
                 logImportResult(tableName, 'success', `processed ${dataBuffer.length} rows`);
                 resolve({ tableName, rows: dataBuffer.length, status: 'success' });
@@ -297,27 +328,31 @@ async function runImports() {
         try {
             if (flag_run_craete_all_table || isInsertCurrency) {
                 console.log( `status: start run for table Currency` );
-                await importCSV(CSVCurrencyPath, demo_table_name[0], tableCurrencystmt, rowMapperCurrencyAndAccountType);
+                await importCSV(CSVCurrencyPath, table_name[0], tableCurrencystmt, rowMapperCurrencyAndAccountType);
             }
             if (flag_run_craete_all_table || isInsertAccountType) {
                 console.log( `status: start run for table AccountType` );
-                await importCSV(CSVAccountTypePath, demo_table_name[1], tableAccountTypestmt, rowMapperCurrencyAndAccountType);
+                await importCSV(CSVAccountTypePath, table_name[1], tableAccountTypestmt, rowMapperCurrencyAndAccountType);
             }
             if (flag_run_craete_all_table || isInsertAccounts) {
                 console.log( `status: start run for table Accounts` );
-                await importCSV(CSVAccountPath, demo_table_name[2], tableAccountstmt, rowMapperAccount);
+                await importCSV(CSVAccountPath, table_name[2], tableAccountstmt, rowMapperAccount);
             }
             if (flag_run_craete_all_table || isInsertTransactionsJournal) {
                 console.log( `status: start run for table TransactionsJournal` );
-                await importCSV(CSVTransactionsJournalPath, demo_table_name[3], tableTransactionsJournalstmt, rowMapperTransactionsJournal);
+                await importCSV(CSVTransactionsJournalPath, table_name[3], tableTransactionsJournalstmt, rowMapperTransactionsJournal);
             }
             if (flag_run_craete_all_table || isInsertTransactionsLedger) {
                 console.log( `status: start run for table TransactionsLedger` );
-                await importCSV(CSVTransactionsLedgerPath, demo_table_name[4], tableTransactionsLedgerstmt, rowMapperTransactionsLedger);
+                await importCSV(CSVTransactionsLedgerPath, table_name[4], tableTransactionsLedgerstmt, rowMapperTransactionsLedger);
             }
             if (flag_run_craete_all_table || isInsertAccountBalance) {
                 console.log( `status: start run for table TransactionsLedger` );
-                await importCSV(CSVAccountBalancePath, demo_table_name[5], tableAccountBalancestmt, rowMapperAccountBalance);
+                await importCSV(CSVAccountBalancePath, table_name[5], tableAccountBalancestmt, rowMapperAccountBalance);
+            }
+            if (flag_run_craete_all_table || isInsertUsers) {
+                console.log( `status: start run for table TransactionsLedger` );
+                await importCSV(CSVUsersPath, table_name[5], tableUsersstmt, rowMapperUsers);
             }
         }
         catch (e) {

@@ -26,12 +26,13 @@ if (isHelp) {
     console.log( `-TJ \t\t\t : create for table TransactionsJournal` );
     console.log( `-TL \t\t\t : create for table TransactionsLedger` );
     console.log( `-AB \t\t\t : create for table AccountBalance` );
+    console.log( `-TU \t\t\t : create for table Users` );
     
     process.exit(0);
 }
 
 const flag_run_craete_all_table = args.includes('--all') || args.includes('-a');
-const flag_view_only = (! args.includes('--all') && ! args.includes('-a')) && (args.includes('--view') || args.includes('-v'));
+const flag_view_only = (! flag_run_craete_all_table) && (args.includes('--view') || args.includes('-l'));
 if ( flag_view_only ) {
     console.log("no table creation would be made");
 }
@@ -43,27 +44,29 @@ const isCreateAccounts = args.includes('-TA') ?? 0;
 const isCreateTransactionsJournal = args.includes('-TJ') ?? 0;
 const isCreateTransactionsLedger = args.includes('-TL') ?? 0;
 const isCreateAccountBalance = args.includes('-AB') ?? 0;
+const isCreateUsers = args.includes('-TU') ?? 0;
 
 
 // ##################################################
 // path and filename definition
 
-const demo_database_name = process.env.TEST_DATABASE_FILENAME;
+const database_name = process.env.TEST_DATABASE_FILENAME;
 
-const demo_table_name = [
+const table_name = [
     `Currency`,
     `AccountType`,
     `Accounts`,
     `TransactionJournal`,
     `TransactionLedger`,
     `AccountBalanace`,
+    `Users`,
 ];
 
 // ##################################################
 // check db exist
 
-const __root = path.join(__dirname, "..");
-const db_file_path = path.join(__root, "databases", demo_database_name);
+const __root = path.join(__dirname, "..", "..", "..");
+const db_file_path = path.join(__root, "databases", database_name);
 if (! fs.existsSync( db_file_path )) {
     console.log( `db file for path ${db_file_path} does not exists` );
     process.exit(-1);
@@ -71,8 +74,8 @@ if (! fs.existsSync( db_file_path )) {
 
 if ( flag_view_only ) {
     console.log( "table can be created: " );
-    for (let i = 0; i < demo_table_name.length; i++) {
-        console.log(`\t\t${ demo_table_name[i] }`);
+    for (let i = 0; i < table_name.length; i++) {
+        console.log(`\t\t${ table_name[i] }`);
     };
 }
 
@@ -96,8 +99,14 @@ catch (e) {
 // ##################################################
 // create tables
 
-const tableAccountType = db.prepare( "CREATE TABLE IF NOT EXISTS AccountType (id INTEGER PRIMARY KEY , description VARCHAR(16));" );
-const tableCurrency = db.prepare( "CREATE TABLE IF NOT EXISTS Currency (id CHAR(3) NOT NULL PRIMARY KEY, description VARCHAR(64));" );
+const tableAccountType = db.prepare( `CREATE TABLE IF NOT EXISTS AccountType (
+    id INTEGER PRIMARY KEY , 
+    description VARCHAR(16)
+);` );
+const tableCurrency = db.prepare( `CREATE TABLE IF NOT EXISTS Currency (
+    id CHAR(3) NOT NULL PRIMARY KEY, 
+    description VARCHAR(64)
+);` );
 
 
 const tableAccounts = db.prepare( `CREATE TABLE IF NOT EXISTS Accounts (
@@ -112,7 +121,7 @@ const tableAccounts = db.prepare( `CREATE TABLE IF NOT EXISTS Accounts (
 
     FOREIGN KEY (account_type) REFERENCES AccountType(id),
     FOREIGN KEY (currency) REFERENCES Currency(id)
-    );` );
+);` );
 
 // transaction
 // v2
@@ -122,7 +131,7 @@ const tableTransactionJournal = db.prepare( `CREATE TABLE IF NOT EXISTS Transact
     created_at DATE NOT NULL, 
     metadata TEXT CHECK(json_valid(metadata)), 
     is_deleted BOOLEAN NOT NULL DEFAULT 0
-    );` ); 
+);` ); 
 
 // // v1
 // const tableTransactionJournal = db.prepare( `CREATE TABLE IF NOT EXISTS TransactionsJournal (
@@ -147,7 +156,7 @@ const tableTransactionLedger = db.prepare( `CREATE TABLE IF NOT EXISTS Transacti
     FOREIGN KEY (transaction_id) REFERENCES TransactionsJournal(id),
     FOREIGN KEY (account_id) REFERENCES Accounts(id),
     FOREIGN KEY (currency) REFERENCES Currency (id)
-    );` );
+);` );
 
 const tableAccountBalance = db.prepare( `CREATE TABLE IF NOT EXISTS AccountBalance (
     id INTEGER PRIMARY KEY, 
@@ -158,10 +167,17 @@ const tableAccountBalance = db.prepare( `CREATE TABLE IF NOT EXISTS AccountBalan
 
     FOREIGN KEY (account_id) REFERENCES Accounts(id),
     FOREIGN KEY (currency) REFERENCES Currency (id)
-    );` );
+);` );
+
+const tableUsers = db.prepare( `CREATE TABLE IF NOT EXISTS Users (
+    id INTEGER PRIMARY KEY, 
+    username VARCHAR(16) NOT NULL, 
+    email TEXT, 
+    password TEXT NOT NULL
+);` );
 
 // init tables function
-const setupDatabaseTable = db.transaction( ( flagALL, flagC, flagAT, flagAS, flagTJ, flagTL, flagAB ) => {
+const setupDatabaseTable = db.transaction( ( flagALL, flagC, flagAT, flagAS, flagTJ, flagTL, flagAB, flagTU) => {
     // Open/Create the database file
     let info1 = null;
     // info table
@@ -173,14 +189,17 @@ const setupDatabaseTable = db.transaction( ( flagALL, flagC, flagAT, flagAS, fla
     if (flagALL || flagTL) info1 = tableTransactionLedger.run();
     // temp bal table
     if (flagALL || flagAB) info1 = tableAccountBalance.run();
-
+    // webUI user table
+    if (flagALL || flagTU) info1 = tableUsers.run();
+    // return status
     return info1;
 });
 
-if ( db != null ) {
+if ( db != null && !flag_view_only ) {
     try {
         const setupDB = setupDatabaseTable( flag_run_craete_all_table, isCreateCurrency , isCreateAccountType , 
-            isCreateAccounts , isCreateTransactionsJournal , isCreateTransactionsLedger , isCreateAccountBalance );
+            isCreateAccounts , isCreateTransactionsJournal , isCreateTransactionsLedger , isCreateAccountBalance, isCreateUsers );
+        console.log( `result: ${JSON.stringify(setupDB, null, 2)}` );
         const checking = db.prepare("SELECT sql FROM sqlite_schema WHERE type IN ('table', 'index') AND sql NOT NULL;").all();
         console.log(`.schema: \n${JSON.stringify(checking, null, 2)}`)
     }
