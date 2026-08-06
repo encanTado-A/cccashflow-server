@@ -620,20 +620,54 @@ WHERE date_of_transaction >= DATE('now', '-3 months', 'start of month')
         return res.json({ "status": "okay", message: "Account Balance added successfully" });
     }); // end post(v1/accountbalance)
 
-    router.post('/v1/accountbalance/calculate', logger, async (req, res) => {
-        const targetId = req.body.id ?? 0;
-        let result;
+    router.put('/v1/accountbalance/calculate', logger, async (req, res) => {
+        const stmt = db.prepare( 
+`SELECT TL.account_id AS account_id, SUM( CASE WHEN TL.is_credit = 0 THEN amount ELSE 0 END ) - SUM( CASE WHEN TL.is_credit = 1 THEN amount ELSE 0 END ) AS "balance"
+FROM TransactionsLedger AS TL LEFT JOIN Accounts AS ACCS
+ON TL.account_id = ACCS.id
+GROUP BY TL.account_id;` );
+        let stmtresult = null;
         try {
-            const checkExist = db.prepare(`SELECT count(*) FROM AccountBalance WHERE id = ?`).get( targetId );
-            if ( checkExist ) {
-                const stmt = db.prepare(`INSERT INTO AccountBalance VALUES (?, ?)`);
-                result = stmt.run(req.body.id, req.body.description);
-            }
-            else {
-                return res.json( { "status": "Not Found" } ) 
-            }
+            stmtresult = stmt.all();
         }
         catch (sqlite_error) {
+            console.error( "SQLite INSERT error:", sqlite_error.message );
+            return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
+        }
+
+        if ( !stmtresult ) {
+            console.log( "error: no record found in Account Balance. code: -4567" );
+            return res.status(400).json({ "status": "error", "error-message": `${"no record"}` });
+            process.exit(-4567);
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        
+        const rowMapperAccountBalance = (row) => ({
+            "account_id": row.account_id,
+            "balance": row.balance, // row.balance >= 0 ? row.balance : Math.abs(row.balance),
+            "updated_at": today
+        });
+
+        let insertMany = db.transaction ( (rows, stmt) => {
+            for ( const row of rows ) 
+                stmt.run(row);
+        });
+
+        const dataBuffer = [];
+        const updateSQL = db.prepare( 
+`UPDATE AccountBalance
+SET balance = @balance , updated_at = @updated_at
+WHERE account_id = @account_id`);
+            
+        try {
+            stmtresult.forEach(element => {
+                element["balance"] = Math.round(element["balance"]);
+                dataBuffer.push(rowMapperAccountBalance(element));
+                insertMany(dataBuffer, updateSQL);
+            });
+        } 
+        catch (error) {
             console.error( "SQLite INSERT error:", sqlite_error.message );
             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
         }
