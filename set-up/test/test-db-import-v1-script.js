@@ -243,7 +243,7 @@ const rowMapperTransactionsLedger = (row) => ({
 const rowMapperAccountBalance = (row) => ({
     "id": row.id,
     "account_id": row.account_id,
-    "balance": row.balance ?? 0,
+    "balance": (row.balance < 0 || row.balance == null ) ? 0 : row.balance,
     "currency": row.currency ?? 'HKD',
     "updated_at": row.updated_at
 });
