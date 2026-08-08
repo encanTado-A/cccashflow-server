@@ -3,14 +3,10 @@ import passportLocal from 'passport-local';
 const LocalStrategy = passportLocal.Strategy;
 
 export default function initializePassport(passport, bcrypt, utiliSqlite) {
-    console.log( `loaded passport.mjs` );
-    // console.log( `${passport} ${bcrypt} ${Object.keys(utiliSqlite)}` );
-    
+    console.log( `loaded passport.mjs` );    
     async function authenticateUser(username, password, done) {
         try {
             const user = utiliSqlite.getUserForLoginByUsername( username );
-            console.log("user: " + JSON.stringify(user, null, 2));
-
             if ( !user ) {
                 console.log( `status: passport: Incorrect username.` );
                 return done(null, false, { message: 'Incorrect username or password.' });
@@ -35,12 +31,13 @@ export default function initializePassport(passport, bcrypt, utiliSqlite) {
         usernameField: 'username',
         passwordField: 'user_password'
         },
-        authenticateUser));
+        authenticateUser)
+    ); // end passport.use()
 
     passport.serializeUser((user, done) => {
-    console.log( `status: passport: serializeUser ${user.username}` );
+        console.log( `status: passport: serializeUser ${user.username}` );
         return done(null, user.id);
-    });
+    }); // end passport.serializeUser()
 
     passport.deserializeUser((id, done) => {
         try {
@@ -48,11 +45,11 @@ export default function initializePassport(passport, bcrypt, utiliSqlite) {
             if (!result) {
                 return done(null, false);
             }
-            console.log( `status: passport: deserializeUser ${result.username}` );
+            console.log( `status: passport: deserialize User ${result.username}` );
             return done(null, result);
         }
         catch (err) {
             return done(err, null);
         }
-    });
+    }); // end passport.deserializeUser()
 }
