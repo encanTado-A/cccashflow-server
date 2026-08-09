@@ -13,12 +13,16 @@ export default function createRouter(express, db, passport, bcrypt, salt, logger
     });
 
     router.get('/dashboard', logger, auth_check_test.checkAuthenticated, async (req, res) => {
-        res.render('test-dashboard-ai', { title: 'Home', username: req.user.name || 'Andrew' });
+        res.render('test-dashboard', { title: 'Home', username: req.user.name || 'Andrew' });
     });
 
     router.get('/accounts', logger, auth_check_test.checkAuthenticated, async (req, res) => {
         // res.render('test-account', { title: 'Accounts', username: 'Andrew' });
         res.send( `<H2>accounts</H2>` );
+    });
+
+    router.get('/form', logger, auth_check_test.checkAuthenticated, async (req, res) => {
+        res.render('test-forms', { title: 'Form', username: 'Andrew' });
     });
 
     router.get('/currency', logger, auth_check_test.checkAuthenticated, async (req, res) => {
@@ -139,13 +143,13 @@ export default function createRouter(express, db, passport, bcrypt, salt, logger
     // --------------------------------------------------
     // // ai fast track
 
-    // router.get('/ai/', logger, async (req, res) => {
-    //     res.redirect(`/test/ai/dashboard`);
-    // });
+    router.get('/ai/', logger, async (req, res) => {
+        res.redirect(`/test/ai/dashboard`);
+    });
 
-    // router.get('/ai/dashboard', logger, async (req, res) => {
-    //     res.render('test-dashboard-ai', { title: 'Home', username: 'Andrew' });
-    // });
+    router.get('/ai/dashboard', logger, async (req, res) => {
+        res.render('test-dashboard-ai', { title: 'Home', username: 'Andrew' });
+    });
 
     // router.get('/ai/accounts', logger, async (req, res) => {
     //     res.render('test-dashboard-ai', { title: 'Accounts', username: 'Andrew' });
