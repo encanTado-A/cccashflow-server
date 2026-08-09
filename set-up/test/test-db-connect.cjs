@@ -5,27 +5,30 @@ const path = require('path');
 // const env = require('dotenv');
 
 // env.config();
+// require env setting
 
-const demo_table_name = [
+
+const table_name = [
     `Currency`,
     `AccountType`,
-    `MoneyCategory`,
     `Accounts`,
-    `AccountBalanace`,
     `TransactionJournal`,
     `TransactionLedger`,
+    `AccountBalanace`,
+    `Users`,
 ];
 
 // ##################################################
 
+const __root = path.join(__dirname, "../../..");
 let db = null;
 
-const demoConnectSqliteDB = (verbose) => {
+function demoConnectSqliteDB (verbose) {
     console.log("status: call from test-db-connect.cjs");
-    console.log(`status: connecting to ${process.env.TEST_DATABASE_FILENAME}`);
+    const db_file_name = process.env.TEST_DATABASE_FILENAME
+    const db_file_path = path.join(__root, "databases", db_file_name);
+    console.log(`status: connecting to ${db_file_name}`);
     try {
-        const db_file_path = path.join(process.env.TEST_DATABASE_PATH, process.env.TEST_DATABASE_FILENAME);
-
         if ( ! fs.existsSync( db_file_path ) ) {
             console.log('status: database file does not exists');
             process.exit(-1);

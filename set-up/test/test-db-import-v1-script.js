@@ -6,9 +6,10 @@ const url = require('node:url');
 const csv = require('csv-parser');
 const env = require('dotenv');
 
-env.config();
+const __root = path.join(__dirname, "../../..");
+console.log( `you are at: ${__root}` );
+env.config( {path: path.resolve(__root, './cccashflow-server', './.env') } );
 // require env setting
-// TEST_DATABASE_PATH
 // TEST_DATABASE_FILENAME
 // TEST_CURRENCY_CSV,
 // TEST_ACCOUNTTYPE_CSV,
@@ -81,7 +82,6 @@ const isInsertUsers = args.includes('-TU') ?? 0;
 // ##################################################
 
 // __filename __dirname given in cjs
-const __root = path.join(__dirname, "../../..");
 
 // ##################################################
 // path and filename definition
@@ -111,7 +111,7 @@ const table_name = [
 
 const db_file_path = path.join(__root, "databases", database_name);
 if (! fs.existsSync( db_file_path )) {
-    console.log('database file does not exists');
+    console.log( `database file ${database_name} does not exists` );
     process.exit(-1);
 }
 

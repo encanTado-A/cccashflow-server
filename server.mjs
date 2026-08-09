@@ -39,11 +39,11 @@ import auth_check_test from './middleware/auth-check-test.cjs';
 
 // ##################################################
 
-env.config();
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+env.config( {path: path.resolve('./.env') } );
 
 // view engine
 app.set( 'view engine', 'ejs' );

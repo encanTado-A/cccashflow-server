@@ -5,7 +5,8 @@ const path = require('node:path');
 const url = require('node:url');
 const env = require('dotenv');
 
-env.config();
+const __root = path.join(__dirname, "../../..");
+env.config( {path: path.resolve(__root, './cccashflow-server', './.env') } );
 // require env setting
 // TEST_DATABASE_FILENAME
 
@@ -20,6 +21,7 @@ if (isHelp) {
     console.log( `--all / -a \t\t : program will create all the target table with given definition` );
     console.log( `--view / -l \t\t : program will NOT run any creation` );
     console.log( `--verbose / -v \t\t : program database will verbose` );
+    console.log( `--exist \t\t\t : program will look for database instead of creating one` );
     console.log( `-TC \t\t\t : create for table Currency` );
     console.log( `-TAT \t\t\t : create for table AccountType` );
     console.log( `-TA \t\t\t : create for table Accounts` );
@@ -38,6 +40,7 @@ if ( flag_view_only ) {
 }
 
 const isVerbose = ( args.includes('-verbose') || args.includes('-v') ) ?? 0;
+const isExistDatabase = args.includes('--exist') ?? 0;
 const isCreateCurrency = args.includes('-TC') ?? 0;
 const isCreateAccountType = args.includes('-TAT') ?? 0;
 const isCreateAccounts = args.includes('-TA') ?? 0;
@@ -46,11 +49,11 @@ const isCreateTransactionsLedger = args.includes('-TL') ?? 0;
 const isCreateAccountBalance = args.includes('-AB') ?? 0;
 const isCreateUsers = args.includes('-TU') ?? 0;
 
-
 // ##################################################
 // path and filename definition
 
 const database_name = process.env.TEST_DATABASE_FILENAME;
+console.log(`database_name: ${database_name}`);
 
 const table_name = [
     `Currency`,
@@ -65,11 +68,13 @@ const table_name = [
 // ##################################################
 // check db exist
 
-const __root = path.join(__dirname, "..", "..", "..");
 const db_file_path = path.join(__root, "databases", database_name);
-if (! fs.existsSync( db_file_path )) {
+if ( isExistDatabase && ! fs.existsSync( db_file_path )) {
     console.log( `db file for path ${db_file_path} does not exists` );
     process.exit(-1);
+}
+if ( !isExistDatabase ) {
+    console.log( `db file for path ${db_file_path} would be created` );
 }
 
 if ( flag_view_only ) {
@@ -107,7 +112,6 @@ const tableCurrency = db.prepare( `CREATE TABLE IF NOT EXISTS Currency (
     id CHAR(3) NOT NULL PRIMARY KEY, 
     description VARCHAR(64)
 );` );
-
 
 const tableAccounts = db.prepare( `CREATE TABLE IF NOT EXISTS Accounts (
     id INTEGER PRIMARY KEY,
