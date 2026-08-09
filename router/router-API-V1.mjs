@@ -224,15 +224,15 @@ ORDER BY date ASC;`);
                     result = stmt.all();
                     break;
 
-                case 4: // previous 3 month transaction count
+                case 4: // asset overview   
                     console.log( "running 4" )
                     stmt = db.prepare(
-`SELECT COUNT(*) AS count, strftime('%Y-%m', created_at) AS date 
-FROM TransactionsJournal 
-WHERE created_at >= DATE('now', '-2 months', 'start of month')
-    AND created_at <= DATE('now')
-GROUP BY date
-ORDER BY date ASC;`);
+`select AB.account_id, ACCS.name, sum(AB.balance) AS "balance", AB.currency, AB.updated_at
+from accountbalance AS AB 
+left join accounts AS ACCS 
+ON AB.account_id = ACCS.id
+group by AB.currency, ACCS.account_type
+order by AB.account_id ASC, AB.currency ASC;`);
                     result = stmt.all();
                     break;
 
