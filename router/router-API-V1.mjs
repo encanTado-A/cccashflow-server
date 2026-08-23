@@ -3,12 +3,12 @@ import express from 'express';
 
 // Whitelist of allowed tables for security
 const ALLOWED_TABLES = [
-    'AccountType',
-    'Currency',
-    'Accounts',
-    'TransactionsLedger',
-    'TransactionsJournal',
-    'AccountBalance'
+    'accounttype',
+    'currency',
+    'accounts',
+    'transactionsledger',
+    'transactionsjournal',
+    'accountbalance'
 ];
 
 // Helper: Get column names from table pragma
@@ -102,52 +102,125 @@ export default function createRouter(db, logger, __dirname) {
     // --------------------------------------------------
     // general endpoint approach
 
-    // router.get('/v1/data', async (req, res) => {
-    //     const table = req.query.table; // AccountType Currency Accounts TransactionsJournal TransactionsLedger
-    //     const selectType = req.query.selectType; // selectALL countALL
-    //     const limit = Number(req.query.limit ?? -1);
-    //     const sort = req.query.sort ?? "id";
-    //     const order  = req.query.order ?? "ASC";
-    //     const where = buildWhereClause(req.query);
+    router.post('/v1/data', async (req, res) => {
+        // console.log("body: ", JSON.stringify(req.body, null, 2));
+        // console.log("query: ", JSON.stringify(req.query, null, 2));
         
-    //     let sql = "";
-    //     if ( selectType === "selectALL" ) {
-    //         sql += "SELECT * "
-    //     }
-    //     else if ( selectType === "countALL" ) {
-    //         sql += "SELECT COUNT(*) "
-    //     }
-    //     else {
-    //         return res.status(400).json({ "status": "error", "message": "unsupported selectType" });
-    //     }
+        // assumption: the query is correct and valid
+        const table = String(req.body.table).toLowerCase(); // AccountType Currency Accounts TransactionsJournal TransactionsLedger
+        // const selectType = req.body.selectType;
+        const limit = Number(req.body.limit ?? 25);
+        const page = req.body.page ?? 1;
+        const itemOrder = req.body.order_item ?? "id";
+        const sort  = String(req.body.sort_direction.toUpperCase() ?? "ASC");
+        const dateFrom = req.body.date_form ?? null;
+        const dateTo = req.body.date_to ?? null;
+        const cursor = req.body.cursor ?? null;
+        
+        // checking
+        console.log( `status: checking variables: table ${table}, limit ${limit}, page ${page}, itemOrder ${itemOrder}, sort ${sort}, dateFrom ${dateFrom}, dateTo ${dateTo}, cursor ${cursor}` );
+        if ( !ALLOWED_TABLES.includes(table) ) {
+            console.log( `flag: user access unauthorized table: ${table}` )
+            return res.status(400).json({ "status": "error", "message": `unsupported table ${table}` });
+        }
+        if ( limit < 0 ) {
+            console.log( `flag: user try to limit a negatie number` )
+            return res.status(400).json({ "status": "error", "message": 'unsupported table' });
+        }
+        if ( sort && ![ "ASC", "DESC" ].includes(sort) ) {
+            console.log( `flag: user try sort with unsupported style` )
+            return res.status(400).json({ "status": "error", "message": 'unsupported sorting' });
+        }
+        if ( !"is-not-date" && (dateFrom || dateTo) ) {
+            console.log( `flag: user try find a date range with unsupported date format` )
+            return res.status(400).json({ "status": "error", "message": 'unsupported date' });
+        }
+        // check table have the field to do sorting
+        if ( !"itemOrder not exist in the table" ) {
+            console.log( `flag: user try sort a field that does not exist in the table` )
+            return res.status(400).json({ "status": "error", "message": 'field to sort does not exist' });
+        }
 
-    //     if ( Array.isArray(table) ) {
+        // get the totalrows
+        const totalRows = db.prepare( `SELECT COUNT(*) AS total FROM ${table}` ).get().total;
 
-    //     }
+        // sql making
+        let sql = "";
+        // if ( selectType === "selectALL" ) {
+        //     sql += "SELECT * "
+        // }
+        // else if ( selectType === "countALL" ) {
+        //     sql += "SELECT COUNT(*) "
+        // }
+        // else {
+        //     return res.status(400).json({ "status": "error", "message": "unsupported selectType" });
+        // }
 
-    //     if ( limit >= 0 ) {
-    //         try {
-    //             const sql = `SELECT * FROM ${table} ${where} ORDER BY ${sort} LIMIT ?`;
-    //             const rows = db.prepare(sql).all(limit);
-    //         }
-    //         catch (sqlite_error) {
-    //             console.error( "SQLite SELECT error:", sqlite_error.message );
-    //             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
-    //         }
-    //     }
-    //     else {
-    //         try {
-    //             const sql = `SELECT * FROM ${table} ${where} ORDER BY ${sort}`;
-    //             const rows = db.prepare(sql).all();
-    //         }
-    //         catch (sqlite_error) {
-    //             console.error( "SQLite SELECT error:", sqlite_error.message );
-    //             return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
-    //         }
-    //     }
-    //     // const rows = db.prepare(sql).all(...params, limit);
-    //     return res.json(rows);
-    // });
+        sql += "SELECT * "
+        sql += ", COUNT(*) OVER () AS total "
+        sql += `FROM ${table} `;
+        sql += "WHERE 1=1 ";
+
+        // where cause
+        // sql += "AND id >= ? "; // offset but use id for faster speed
+
+        // date related
+        if ( dateFrom && dateTo ) {
+            sql += `AND date BETWEEN ? AND ?`
+        }
+        else if ( dateFrom && !dateTo ) {
+            sql += `AND date > dataFrom `;
+        }
+        else if ( !dateFrom && dateTo ) {
+            sql += `AND date < dateTo`
+        }
+
+        // ordering
+        if ( sort == "ASC") {
+            // if ( cursor != null ) 
+            sql += "AND id > ? "; // offset but use id for faster speed
+            if ( itemOrder == "id" ) sql += `ORDER BY id ASC ` 
+        }
+        else {
+            // if ( cursor != null ) 
+            sql += "AND id < ? "; // offset but use id for faster speed
+            if ( itemOrder == "id" ) sql += `ORDER BY id DESC ` 
+        }
+
+        // add the limit
+        sql += 'limit ? ';
+
+        // // add the offset
+        // sql += 'offset ? ';
+        
+        console.log(sql, totalRows, cursor, limit );
+
+        let rows = null
+        // make the query
+        try {
+            if ( sort == "ASC") {
+                rows = db.prepare(sql).all( (page - 1)*limit, limit );
+                // if ( cursor == null ) rows = db.prepare(sql).all( (page - 1)*limit, limit );
+                // else rows = db.prepare(sql).all( cursor, limit );
+            }
+            else {
+                rows = db.prepare(sql).all( totalRows - (page - 1) * limit, limit )
+                // if ( cursor == null ) rows = db.prepare(sql).all( limit );
+                // else rows = db.prepare(sql).all( cursor, limit );
+            }
+            
+            // const rows = db.prepare(sql).all( table, (page - 1) * limit, dateFrom, orderItem, limit );
+            // const rows = db.prepare(sql).all( table, (page - 1) * limit, dateTo, orderItem, limit );
+            // const rows = db.prepare(sql).all( table, (page - 1) * limit, dateFrom, dateTo, orderItem, limit );
+        }
+        catch (sqlite_error) {
+            console.error( "SQLite SELECT error:", sqlite_error.message );
+            return res.status(400).json({ "status": "error", "sql-error-message": `${sqlite_error.message}` });
+        }
+        return res.json(rows);
+    });
+
+    // --------------------------------------------------
 
     router.get('/v1/graph', async (req, res) => {
         const graphNO = parseInt(req.query.graphNO);
